@@ -183,7 +183,7 @@ const getGigNotificationEmail = (name, gigTitle, clientName) =>
     </div>
 `);
 
-module.exports = {
+export {
   getVerificationEmail,
   getPasswordResetEmail,
   getTwoFactorCodeEmail,

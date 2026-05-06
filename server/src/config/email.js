@@ -25,7 +25,7 @@ const mailGenerator = new Mailgen({
   theme: "default",
   product: {
     name: "SkillSphere",
-    link: `http://localhost:${process.env.PORT}/`,
+    link: process.env.FRONTEND_URL,
   },
 });
 
