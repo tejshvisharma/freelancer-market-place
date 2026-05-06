@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "cross-env NODE_ENV=test jest --runInBand"
   },
   "keywords": ["freelancer", "marketplace", "mern"],
   "author": "Mahatejshvi Vareny Swami",
@@ -24,10 +25,17 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.1",
     "morgan": "^1.10.1",
+    "nodemailer": "^6.10.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "cross-env": "^7.0.3",
+    "jest": "^30.0.3",
+    "mongodb-memory-server": "^10.2.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.1.4"
   }
 }

@@ -5,7 +5,12 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import devLogger from "./middleware/devLogger.middleware.js";
 import routes from "./routes/index.routes.js";
-import { globalErrorHandler, notFoundHandler } from "./middleware/error.middleware.js";
+import {
+  globalErrorHandler,
+  notFoundHandler,
+} from "./middleware/error.middleware.js";
+import passport from "passport";
+import configurePassport from "./config/passport.js";
 
 const app = express();
 
@@ -27,6 +32,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(devLogger);
+
+configurePassport();
+app.use(passport.initialize());
 
 app.use(routes);
 

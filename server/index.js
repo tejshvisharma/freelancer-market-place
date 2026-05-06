@@ -4,13 +4,13 @@ dotenv.config();
 
 // Validate environment variables
 import { validateEnv } from "./src/config/validateEnv.js";
-// validateEnv();
+validateEnv();
 
 // import  express app from  app.js file
 import app from "./src/app.js";
 
 // Connect to MongoDB
-// connectDB();
+connectDB();
 
 // Start server
 const PORT = process.env.PORT || 8000;
