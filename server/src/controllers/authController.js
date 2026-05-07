@@ -181,6 +181,7 @@ const login = asyncHandler(async (req, res) => {
 
 	return successResponse(res, "Login successful", {
 		user: sanitizeUser(user),
+		accessToken,
 	});
 });
 
@@ -300,6 +301,7 @@ const refreshToken = asyncHandler(async (req, res) => {
 
 	return successResponse(res, "Token refreshed", {
 		user: sanitizeUser(user),
+		accessToken: newAccessToken,
 	});
 });
 
@@ -458,6 +460,7 @@ const verify2FA = asyncHandler(async (req, res) => {
 
 	return successResponse(res, "2FA verified", {
 		user: sanitizeUser(user),
+		accessToken,
 	});
 });
 
@@ -524,6 +527,7 @@ const googleAuthCallback = (req, res, next) => {
 
 				return successResponse(res, "Google login successful", {
 					user: sanitizeUser(user),
+					accessToken,
 				});
 			} catch (error) {
 				return next(error);

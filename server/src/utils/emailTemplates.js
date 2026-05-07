@@ -70,7 +70,7 @@ const getBaseTemplate = (content) => `
 </head>
 <body>
     <div class="header">
-        <h1>🚀 Freelancer Marketplace</h1>
+        <h1>🚀 SkillSphere</h1>
     </div>
     <div class="content">
         ${content}

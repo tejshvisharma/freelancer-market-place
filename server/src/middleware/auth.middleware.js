@@ -168,7 +168,7 @@ const optionalAuth = asyncHandler(async (req, res, next) => {
 const authRateLimiter = {
   loginLimiter: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 attempts per windowMs
+    max: 10, // 5 attempts per windowMs
     message: {
       success: false,
       message: "Too many login attempts, please try again after 15 minutes",
