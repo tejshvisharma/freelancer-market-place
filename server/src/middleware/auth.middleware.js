@@ -5,6 +5,7 @@ import {
   UnauthorizedError,
   ForbiddenError,
 } from "../utils/api-error.js";
+import { verifyAccessToken } from "../utils/generateTokens.js";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -65,7 +66,9 @@ const protect = asyncHandler(async (req, res, next) => {
     token = req.headers.authorization.split(" ")[1];
   }
   // Check for token in cookies
-  else if (req.cookies && req.cookies.token) {
+  else if (req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
+  } else if (req.cookies?.token) {
     token = req.cookies.token;
   }
 
@@ -76,7 +79,7 @@ const protect = asyncHandler(async (req, res, next) => {
 
   try {
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyAccessToken(token);
 
     // Get user from token (exclude password)
     const user = await User.findById(decoded.id).select("-password");

@@ -24,17 +24,19 @@ const resolveRouter = (moduleExports) => {
   return null;
 };
 
+const apiBase = "/api/v1";
+
 const routeEntries = [
-  ["/api/auth", authRoutes],
-  ["/api/users", userRoutes],
-  ["/api/gigs", gigRoutes],
-  ["/api/proposals", proposalRoutes],
-  ["/api/reviews", reviewRoutes],
-  ["/api/chats", chatRoutes],
-  ["/api/notifications", notificationRoutes],
-  ["/api/payments", paymentRoutes],
-  ["/api/admin", adminRoutes],
-  ["/api", systemRoutes],
+  [`${apiBase}/auth`, authRoutes],
+  [`${apiBase}/users`, userRoutes],
+  [`${apiBase}/gigs`, gigRoutes],
+  [`${apiBase}/proposals`, proposalRoutes],
+  [`${apiBase}/reviews`, reviewRoutes],
+  [`${apiBase}/chats`, chatRoutes],
+  [`${apiBase}/notifications`, notificationRoutes],
+  [`${apiBase}/payments`, paymentRoutes],
+  [`${apiBase}/admin`, adminRoutes],
+  [apiBase, systemRoutes],
 ];
 
 routeEntries.forEach(([path, moduleExports]) => {

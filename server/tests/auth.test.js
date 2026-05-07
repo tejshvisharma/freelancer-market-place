@@ -14,7 +14,7 @@ process.env.MAILTRAP_SMTP_PASS = "test";
 process.env.GOOGLE_CLIENT_ID = "test_google_client_id";
 process.env.GOOGLE_CLIENT_SECRET = "test_google_client_secret";
 process.env.GOOGLE_CALLBACK_URL =
-  "http://localhost:8000/api/auth/oauth/google/callback";
+  "http://localhost:8000/api/v1/auth/oauth/google/callback";
 
 jest.unstable_mockModule("../src/services/emailService.js", () => ({
   sendVerificationEmail: jest.fn(),
@@ -29,6 +29,15 @@ const request = (await import("supertest")).default;
 const speakeasy = (await import("speakeasy")).default;
 
 let mongoServer;
+
+const getCookieValue = (cookies = [], name) => {
+  const cookie = cookies.find((item) => item.startsWith(`${name}=`));
+  if (!cookie) {
+    return "";
+  }
+
+  return cookie.split(";")[0].replace(`${name}=`, "");
+};
 
 const createUser = async (overrides = {}) => {
   const user = await User.create({
@@ -59,7 +68,7 @@ afterEach(async () => {
 
 describe("Auth API", () => {
   it("registers a new user", async () => {
-    const response = await request(app).post("/api/auth/register").send({
+    const response = await request(app).post("/api/v1/auth/register").send({
       name: "Jane Doe",
       email: "jane@example.com",
       password: "Password@123",
@@ -82,7 +91,7 @@ describe("Auth API", () => {
       isEmailVerified: true,
     });
 
-    const response = await request(app).post("/api/auth/login").send({
+    const response = await request(app).post("/api/v1/auth/login").send({
       email: "login@example.com",
       password: "Password@123",
     });
@@ -91,6 +100,65 @@ describe("Auth API", () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data.user.email).toBe(user.email);
     expect(response.headers["set-cookie"]).toBeDefined();
+  });
+
+  it("verifies email and allows login", async () => {
+    const user = await createUser({
+      email: "verify@example.com",
+      isEmailVerified: false,
+    });
+
+    const token = user.generateEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    const verifyResponse = await request(app).get(
+      `/api/v1/auth/verify-email/${token}`,
+    );
+
+    expect(verifyResponse.status).toBe(200);
+
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
+      email: "verify@example.com",
+      password: "Password@123",
+    });
+
+    expect(loginResponse.status).toBe(200);
+  });
+
+  it("resends verification email for unverified users", async () => {
+    await createUser({
+      email: "resend@example.com",
+      isEmailVerified: false,
+    });
+
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
+      email: "resend@example.com",
+      password: "Password@123",
+    });
+
+    expect(loginResponse.status).toBe(403);
+
+    const verifiedUser = await User.findOne({ email: "resend@example.com" });
+    verifiedUser.isEmailVerified = false;
+    await verifiedUser.save({ validateBeforeSave: false });
+
+    const authUser = await createUser({
+      email: "authresend@example.com",
+      isEmailVerified: true,
+    });
+
+    const authLogin = await request(app).post("/api/v1/auth/login").send({
+      email: "authresend@example.com",
+      password: "Password@123",
+    });
+
+    const cookies = authLogin.headers["set-cookie"] || [];
+
+    const response = await request(app)
+      .post("/api/v1/auth/resend-verification")
+      .set("Cookie", cookies);
+
+    expect(response.status).toBe(200);
   });
 
   it("resets password with a valid token", async () => {
@@ -103,7 +171,7 @@ describe("Auth API", () => {
     await user.save({ validateBeforeSave: false });
 
     const response = await request(app)
-      .put(`/api/auth/reset-password/${token}`)
+      .put(`/api/v1/auth/reset-password/${token}`)
       .send({
         password: "NewPass@123",
         confirmPassword: "NewPass@123",
@@ -111,7 +179,7 @@ describe("Auth API", () => {
 
     expect(response.status).toBe(200);
 
-    const loginResponse = await request(app).post("/api/auth/login").send({
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
       email: "reset@example.com",
       password: "NewPass@123",
     });
@@ -128,7 +196,7 @@ describe("Auth API", () => {
       twoFactorSecret: secret.base32,
     });
 
-    const loginResponse = await request(app).post("/api/auth/login").send({
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
       email: "2fa@example.com",
       password: "Password@123",
     });
@@ -142,7 +210,7 @@ describe("Auth API", () => {
     });
 
     const verifyResponse = await request(app)
-      .post("/api/auth/2fa/verify")
+      .post("/api/v1/auth/2fa/verify")
       .send({
         code,
         twoFactorToken: loginResponse.body.data.twoFactorToken,
@@ -151,10 +219,171 @@ describe("Auth API", () => {
     expect(verifyResponse.status).toBe(200);
   });
 
+  it("sets up, verifies, and disables 2FA", async () => {
+    await createUser({
+      email: "setup2fa@example.com",
+      isEmailVerified: true,
+    });
+
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
+      email: "setup2fa@example.com",
+      password: "Password@123",
+    });
+
+    const cookies = loginResponse.headers["set-cookie"] || [];
+
+    const setupResponse = await request(app)
+      .post("/api/v1/auth/2fa/setup")
+      .set("Cookie", cookies);
+
+    expect(setupResponse.status).toBe(200);
+
+    const secret = setupResponse.body.data.secret;
+    const code = speakeasy.totp({ secret, encoding: "base32" });
+
+    const verifyResponse = await request(app)
+      .post("/api/v1/auth/2fa/verify-setup")
+      .set("Cookie", cookies)
+      .send({ code });
+
+    expect(verifyResponse.status).toBe(200);
+
+    const disableCode = speakeasy.totp({ secret, encoding: "base32" });
+    const disableResponse = await request(app)
+      .post("/api/v1/auth/2fa/disable")
+      .set("Cookie", cookies)
+      .send({ code: disableCode });
+
+    expect(disableResponse.status).toBe(200);
+  });
+
+  it("rotates refresh tokens", async () => {
+    await createUser({
+      email: "refresh@example.com",
+      isEmailVerified: true,
+    });
+
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
+      email: "refresh@example.com",
+      password: "Password@123",
+    });
+
+    const cookies = loginResponse.headers["set-cookie"] || [];
+    const refreshToken = getCookieValue(cookies, "refreshToken");
+
+    const refreshResponse = await request(app)
+      .post("/api/v1/auth/refresh-token")
+      .set("Cookie", cookies);
+
+    expect(refreshResponse.status).toBe(200);
+
+    const oldRefreshResponse = await request(app)
+      .post("/api/v1/auth/refresh-token")
+      .send({ refreshToken });
+
+    expect(oldRefreshResponse.status).toBe(401);
+  });
+
+  it("logs out and invalidates refresh token", async () => {
+    await createUser({
+      email: "logout@example.com",
+      isEmailVerified: true,
+    });
+
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
+      email: "logout@example.com",
+      password: "Password@123",
+    });
+
+    const cookies = loginResponse.headers["set-cookie"] || [];
+    const refreshToken = getCookieValue(cookies, "refreshToken");
+
+    const logoutResponse = await request(app)
+      .post("/api/v1/auth/logout")
+      .set("Cookie", cookies);
+
+    expect(logoutResponse.status).toBe(200);
+
+    const refreshResponse = await request(app)
+      .post("/api/v1/auth/refresh-token")
+      .send({ refreshToken });
+
+    expect(refreshResponse.status).toBe(401);
+  });
+
+  it("changes password and rejects old password", async () => {
+    await createUser({
+      email: "change@example.com",
+      isEmailVerified: true,
+    });
+
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
+      email: "change@example.com",
+      password: "Password@123",
+    });
+
+    const cookies = loginResponse.headers["set-cookie"] || [];
+
+    const changeResponse = await request(app)
+      .put("/api/v1/auth/change-password")
+      .set("Cookie", cookies)
+      .send({ currentPassword: "Password@123", newPassword: "NewPass@123" });
+
+    expect(changeResponse.status).toBe(200);
+
+    const oldLogin = await request(app).post("/api/v1/auth/login").send({
+      email: "change@example.com",
+      password: "Password@123",
+    });
+
+    expect(oldLogin.status).toBe(401);
+
+    const newLogin = await request(app).post("/api/v1/auth/login").send({
+      email: "change@example.com",
+      password: "NewPass@123",
+    });
+
+    expect(newLogin.status).toBe(200);
+  });
+
+  it("validates update profile inputs", async () => {
+    await createUser({
+      email: "profile@example.com",
+      isEmailVerified: true,
+    });
+
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
+      email: "profile@example.com",
+      password: "Password@123",
+    });
+
+    const cookies = loginResponse.headers["set-cookie"] || [];
+
+    const badUpdate = await request(app)
+      .put("/api/v1/auth/update-profile")
+      .set("Cookie", cookies)
+      .send({ avatar: "http://insecure.example.com/avatar.png" });
+
+    expect(badUpdate.status).toBe(422);
+
+    const goodUpdate = await request(app)
+      .put("/api/v1/auth/update-profile")
+      .set("Cookie", cookies)
+      .send({ name: "Updated User", avatar: "https://example.com/avatar.png" });
+
+    expect(goodUpdate.status).toBe(200);
+    expect(goodUpdate.body.data.user.name).toBe("Updated User");
+  });
+
+  it("initiates Google OAuth flow", async () => {
+    const response = await request(app).get("/api/v1/auth/oauth/google");
+    expect(response.status).toBe(302);
+  });
+
   it("returns errors for invalid login and reset token", async () => {
     await createUser({ email: "fail@example.com", isEmailVerified: true });
 
-    const badLogin = await request(app).post("/api/auth/login").send({
+    const badLogin = await request(app).post("/api/v1/auth/login").send({
       email: "fail@example.com",
       password: "WrongPassword@123",
     });
@@ -162,7 +391,7 @@ describe("Auth API", () => {
     expect(badLogin.status).toBe(401);
 
     const badReset = await request(app)
-      .put("/api/auth/reset-password/invalidtoken")
+      .put("/api/v1/auth/reset-password/invalidtoken")
       .send({
         password: "NewPass@123",
         confirmPassword: "NewPass@123",

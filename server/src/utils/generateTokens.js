@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { UnauthorizedError } from "./api-error.js";
 
@@ -46,9 +47,15 @@ const generateRefreshToken = (user) => {
     "30d",
   );
 
-  return jwt.sign({ id: user._id.toString(), type: "refresh" }, secret, {
-    expiresIn,
-  });
+  return jwt.sign(
+    {
+      id: user._id.toString(),
+      type: "refresh",
+      tokenId: crypto.randomUUID(),
+    },
+    secret,
+    { expiresIn },
+  );
 };
 
 /**
