@@ -168,6 +168,8 @@ See [server/.env.example](.env.example) for the complete list. The key variables
 
 Base URL: `/api/auth`
 
+For the frontend auth contract, see [FRONTEND_API_DOCS.md](FRONTEND_API_DOCS.md).
+
 ### Public
 
 - `POST /register`

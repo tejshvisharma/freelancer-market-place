@@ -31,6 +31,8 @@ npm test
 
 Base URL: `/api/auth`
 
+Frontend auth handoff: [FRONTEND_API_DOCS.md](FRONTEND_API_DOCS.md).
+
 - `POST /register`
   - Body: `name`, `email`, `password`, `role`, `phone`
   - Creates user and sends verification email
