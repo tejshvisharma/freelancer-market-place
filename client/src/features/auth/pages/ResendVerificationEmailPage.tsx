@@ -1,37 +1,20 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
-import { authApi } from '../api';
+import { Link } from 'react-router-dom';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { resendVerificationSchema, type ResendVerificationInput } from "@/features/auth/schemas/auth.schema";
+import { useResendVerification } from "@/features/auth/hooks";
 
 export default function ResendVerificationEmailPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-
-  const resendVerificationMutation = useMutation({
-    mutationFn: (value: string) => authApi.resendVerification(value),
-    onSuccess: (res: any) => {
-      setSuccess(
-        res?.data?.message || 'Verification email sent. Please check your inbox.'
-      );
-      setError('');
-      navigate('/verify-email-prompt', { state: { email } });
-    },
-    onError: (err: any) => {
-      setError(
-        err?.response?.data?.message ||
-          'Failed to resend verification email. Please try again.'
-      );
-      setSuccess('');
-    },
+  const form = useForm<ResendVerificationInput>({
+    resolver: zodResolver(resendVerificationSchema),
+    defaultValues: { email: "" },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    resendVerificationMutation.mutate(email);
+  const resend = useResendVerification({ setError: form.setError });
+
+  const onSubmit = (_values: ResendVerificationInput) => {
+    form.clearErrors("root");
+    resend.mutate();  // backend derives email from the auth cookie
   };
 
   return (
@@ -69,13 +52,34 @@ export default function ResendVerificationEmailPage() {
               </p>
             </div>
 
-            {success ? (
+            {resend.isAlreadyVerified ? (
+              /* ── Already verified ─────────────────────────────────── */
+              <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-500 w-full">
+                <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center mb-2">
+                  <span className="material-symbols-outlined text-indigo-500 text-[32px]">verified</span>
+                </div>
+                <div className="text-center space-y-2">
+                  <h2 className="font-display text-[22px] font-bold text-slate-900 tracking-tight">Already Verified</h2>
+                  <p className="font-body-base text-[16px] text-slate-500 leading-relaxed px-2">
+                    Your email is already verified. You can log in right away.
+                  </p>
+                </div>
+                <Link
+                  to="/login"
+                  className="w-full h-[52px] bg-slate-900 text-white font-semibold rounded-xl shadow-md hover:bg-slate-800 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group"
+                >
+                  <span>Go to Login</span>
+                  <span className="material-symbols-outlined text-[20px] transition-transform group-hover:translate-x-1">arrow_forward</span>
+                </Link>
+              </div>
+            ) : resend.isSuccess ? (
+              /* ── Email sent ───────────────────────────────────────── */
               <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-500">
                 <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-2">
                   <span className="material-symbols-outlined text-emerald-500 text-[32px]">check_circle</span>
                 </div>
                 <div className="text-center space-y-2">
-                  <p className="font-body-base text-[16px] text-slate-600 leading-relaxed px-2">{success}</p>
+                  <p className="font-body-base text-[16px] text-slate-600 leading-relaxed px-2">Verification email sent. Please check your inbox.</p>
                 </div>
                 <button 
                   onClick={() => window.open('https://mail.google.com', '_blank')}
@@ -92,16 +96,17 @@ export default function ResendVerificationEmailPage() {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
+              /* ── Default form ─────────────────────────────────────── */
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {form.formState.errors.root && (
                   <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-600 flex items-start gap-3 animate-in fade-in duration-300">
                     <span className="material-symbols-outlined text-red-500 shrink-0">error</span>
-                    <span>{error}</span>
+                    <span>{form.formState.errors.root.message}</span>
                   </div>
                 )}
                 
                 <div className="space-y-2">
-                  <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${error ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                  <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.email ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                       <span className="material-symbols-outlined text-[20px]">mail</span>
                     </div>
@@ -109,22 +114,23 @@ export default function ResendVerificationEmailPage() {
                       id="email" 
                       type="email"
                       placeholder="john@example.com" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      disabled={resendVerificationMutation.isPending}
+                      {...form.register("email")}
+                      disabled={resend.isPending}
                       className="w-full h-[52px] pl-12 pr-4 bg-transparent border-none focus:ring-0 font-body-base text-slate-900 outline-none placeholder:text-slate-400" 
                     />
                   </div>
+                  {form.formState.errors.email && (
+                    <p className="mt-1 text-xs text-red-500 pl-1">{form.formState.errors.email.message}</p>
+                  )}
                 </div>
 
                 <div className="space-y-4 pt-2">
                   <button 
                     type="submit" 
-                    disabled={resendVerificationMutation.isPending}
+                    disabled={resend.isPending}
                     className="w-full h-[52px] bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-70 flex items-center justify-center gap-2"
                   >
-                    {resendVerificationMutation.isPending ? (
+                    {resend.isPending ? (
                       <>
                         <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
                         Sending...

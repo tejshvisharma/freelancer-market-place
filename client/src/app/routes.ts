@@ -7,7 +7,8 @@ export const ROUTES = {
   VERIFY_EMAIL: "/verify-email/:token",
   TWO_FACTOR: "/2fa",
   TWO_FACTOR_SETUP: "/2fa/setup",
-  VERIFY_PENDING: "/verify-pending",
+  VERIFY_PENDING: "/verify-email-prompt",
+  RESEND_VERIFICATION: "/resend-verification",
 
   // Dashboards
   DASHBOARD_CLIENT: "/dashboard/client",

@@ -1,12 +1,11 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { Spinner } from '@/components/ui/spinner';
-
+import { ROLE_REDIRECT, ROUTES } from '@/app/routes';
 
 export function PublicRoute() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, user } = useAuthStore();
 
-  // Show loading state while checking authentication
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -15,11 +14,12 @@ export function PublicRoute() {
     );
   }
 
-  // Redirect to login if not authenticated
-  if (isAuthenticated ) {
-    return <Navigate to="/projects" replace />;
+  // Already logged in → send to their role-based dashboard
+  if (isAuthenticated) {
+    const destination =
+      (user?.role && ROLE_REDIRECT[user.role]) ?? ROUTES.DASHBOARD_CLIENT;
+    return <Navigate to={destination} replace />;
   }
 
-  // Render protected content
   return <Outlet />;
 }

@@ -42,7 +42,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/reset-password',
+    path: ROUTES.RESET_PASSWORD,
     element: (
       <Suspense fallback={<PageLoader />}>
         <ResetPasswordPage />
@@ -50,7 +50,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/verify-email',
+    path: ROUTES.VERIFY_EMAIL,
     element: (
       <Suspense fallback={<PageLoader />}>
         <VerifyEmailPage />
@@ -58,7 +58,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/verify-email-prompt',
+    path: ROUTES.VERIFY_PENDING,
     element: (
       <Suspense fallback={<PageLoader />}>
         <VerifyEmailPromptPage />
@@ -66,7 +66,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: '/resend-verification-email',
+    path: ROUTES.RESEND_VERIFICATION,
     element: (
       <Suspense fallback={<PageLoader />}>
         <ResendVerificationEmailPage />

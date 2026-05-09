@@ -12,10 +12,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
   useProfileQuery,
-  useUpdateProfileMutation,
   useUpdateAvatarMutation,
-  useChangePasswordMutation,
 } from '../api';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { 
+  updateProfileSchema, type UpdateProfileInput,
+  changePasswordSchema, type ChangePasswordInput 
+} from "@/features/auth/schemas/auth.schema";
+import { useUpdateProfile, useChangePassword } from "@/features/auth/hooks";
 
 // ── Password strength helper ───────────────────────────────────────────────────
 function getPasswordStrength(pwd: string) {
@@ -37,29 +42,28 @@ function getPasswordStrength(pwd: string) {
 }
 
 export default function ProfilePage() {
-  // ── Profile edit state ─────────────────────────────────────────────────────
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [fullName, setFullName]                 = useState('');
-  const [username, setUsername]                 = useState('');
-  const [profileError, setProfileError]         = useState('');
-
-  // ── Password state ─────────────────────────────────────────────────────────
-  const [oldPassword, setOldPassword]           = useState('');
-  const [newPassword, setNewPassword]           = useState('');
-  const [confirmPassword, setConfirmPassword]   = useState('');
-  const [showOld, setShowOld]                   = useState(false);
-  const [showNew, setShowNew]                   = useState(false);
-  const [showConfirm, setShowConfirm]           = useState(false);
-  const [passwordSuccess, setPasswordSuccess]   = useState(false);
-  const [passwordError, setPasswordError]       = useState('');
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Hooks ──────────────────────────────────────────────────────────────────
-  const { data: profile, isLoading }  = useProfileQuery();
-  const updateProfile                 = useUpdateProfileMutation();
-  const updateAvatar                  = useUpdateAvatarMutation();
-  const changePassword                = useChangePasswordMutation();
+  const { data: profile, isLoading } = useProfileQuery();
+  const updateAvatar = useUpdateAvatarMutation();
+
+  const profileForm = useForm<UpdateProfileInput & { username?: string }>({
+    resolver: zodResolver(updateProfileSchema),
+    defaultValues: { name: "", username: "" },
+  });
+
+  const passwordForm = useForm<ChangePasswordInput>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: { currentPassword: "", newPassword: "", confirmNewPassword: "" },
+  });
+
+  const updateProfile = useUpdateProfile({ setError: profileForm.setError as any });
+  const changePassword = useChangePassword({ setError: passwordForm.setError });
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const memberSince = profile?.createdAt
@@ -68,43 +72,33 @@ export default function ProfilePage() {
       })
     : null;
 
-  const strength = newPassword ? getPasswordStrength(newPassword) : null;
+  const newPasswordValue = passwordForm.watch("newPassword");
+  const strength = newPasswordValue ? getPasswordStrength(newPasswordValue) : null;
 
   const passwordsMatch =
-    confirmPassword.length > 0 && newPassword === confirmPassword;
+    passwordForm.watch("confirmNewPassword")?.length > 0 && 
+    newPasswordValue === passwordForm.watch("confirmNewPassword");
 
   // ── Profile edit handlers ──────────────────────────────────────────────────
   const handleStartEdit = () => {
-    setFullName(profile?.fullName ?? '');
-    setUsername(profile?.username ?? '');
-    setProfileError('');
+    profileForm.setValue("name", profile?.fullName ?? '');
+    profileForm.setValue("username", profile?.username ?? '');
+    profileForm.clearErrors("root");
     setIsEditingProfile(true);
   };
 
   const handleCancelEdit = () => {
     setIsEditingProfile(false);
-    setProfileError('');
+    profileForm.clearErrors("root");
   };
 
-  const handleSaveProfile = async () => {
-    setProfileError('');
-
-    if (!fullName.trim() && !username.trim()) {
-      setProfileError('Please update at least one field.');
-      return;
-    }
-
-    try {
-      await updateProfile.mutateAsync({
-        ...(fullName.trim()  && { fullName:  fullName.trim()  }),
-        ...(username.trim()  && { username:  username.trim()  }),
-      });
-      setIsEditingProfile(false);
-    } catch (error: any) {
-      setProfileError(
-        error?.response?.data?.message ?? 'Failed to update profile.'
-      );
-    }
+  const handleSaveProfile = (values: UpdateProfileInput & { username?: string }) => {
+    profileForm.clearErrors("root");
+    updateProfile.mutate(values as any, {
+      onSuccess: () => {
+        setIsEditingProfile(false);
+      }
+    });
   };
 
   // ── Avatar handler ─────────────────────────────────────────────────────────
@@ -120,39 +114,13 @@ export default function ProfilePage() {
   };
 
   // ── Password handler ───────────────────────────────────────────────────────
-  const handleChangePassword = async () => {
-    setPasswordError('');
-    setPasswordSuccess(false);
-
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      setPasswordError('All fields are required.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match.');
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters.');
-      return;
-    }
-    if (oldPassword === newPassword) {
-      setPasswordError('New password must be different from current password.');
-      return;
-    }
-
-    try {
-      await changePassword.mutateAsync({ oldPassword, newPassword });
-      setPasswordSuccess(true);
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => setPasswordSuccess(false), 4000);
-    } catch (error: any) {
-      setPasswordError(
-        error?.response?.data?.message ?? 'Failed to change password.'
-      );
-    }
+  const handleChangePassword = (values: ChangePasswordInput) => {
+    passwordForm.clearErrors("root");
+    changePassword.mutate(values, {
+      onSuccess: () => {
+        passwordForm.reset();
+      }
+    });
   };
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -301,12 +269,12 @@ export default function ProfilePage() {
         </div>
 
         {/* Form fields */}
-        <div className="p-5 space-y-4">
+        <form onSubmit={profileForm.handleSubmit(handleSaveProfile)} className="p-5 space-y-4">
 
           {/* Profile error */}
-          {profileError && (
+          {profileForm.formState.errors.root && (
             <Alert variant="destructive">
-              <AlertDescription>{profileError}</AlertDescription>
+              <AlertDescription>{profileForm.formState.errors.root.message}</AlertDescription>
             </Alert>
           )}
 
@@ -318,10 +286,10 @@ export default function ProfilePage() {
             {isEditingProfile ? (
               <Input
                 id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                {...profileForm.register("name")}
                 placeholder="John Doe"
                 autoFocus
+                disabled={updateProfile.isPending}
               />
             ) : (
               <p className="text-sm font-medium py-2 px-3 bg-muted/30 rounded-md">
@@ -338,9 +306,9 @@ export default function ProfilePage() {
             {isEditingProfile ? (
               <Input
                 id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                {...profileForm.register("username")}
                 placeholder="johndoe"
+                disabled={updateProfile.isPending}
               />
             ) : (
               <p className="text-sm font-medium py-2 px-3 bg-muted/30 rounded-md">
@@ -369,7 +337,7 @@ export default function ProfilePage() {
           {isEditingProfile && (
             <div className="flex justify-end pt-2">
               <Button
-                onClick={handleSaveProfile}
+                type="submit"
                 disabled={updateProfile.isPending}
                 size="sm"
               >
@@ -387,7 +355,7 @@ export default function ProfilePage() {
               </Button>
             </div>
           )}
-        </div>
+        </form>
       </section>
 
       {/* ── Change Password ────────────────────────────────────────────────── */}
@@ -401,10 +369,10 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        <div className="p-5 space-y-4">
+        <form onSubmit={passwordForm.handleSubmit(handleChangePassword)} className="p-5 space-y-4">
 
           {/* Success */}
-          {passwordSuccess && (
+          {changePassword.isSuccess && (
             <Alert className="border-emerald-500/30 bg-emerald-500/10">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
               <AlertDescription className="text-emerald-700 dark:text-emerald-300">
@@ -414,9 +382,9 @@ export default function ProfilePage() {
           )}
 
           {/* Error */}
-          {passwordError && (
+          {passwordForm.formState.errors.root && (
             <Alert variant="destructive">
-              <AlertDescription>{passwordError}</AlertDescription>
+              <AlertDescription>{passwordForm.formState.errors.root.message}</AlertDescription>
             </Alert>
           )}
 
@@ -429,10 +397,10 @@ export default function ProfilePage() {
               <Input
                 id="oldPassword"
                 type={showOld ? 'text' : 'password'}
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
+                {...passwordForm.register("currentPassword")}
                 placeholder="Enter current password"
                 className="pr-10"
+                disabled={changePassword.isPending}
               />
               <button
                 type="button"
@@ -457,10 +425,10 @@ export default function ProfilePage() {
               <Input
                 id="newPassword"
                 type={showNew ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                {...passwordForm.register("newPassword")}
                 placeholder="Enter new password"
                 className="pr-10"
+                disabled={changePassword.isPending}
               />
               <button
                 type="button"
@@ -504,10 +472,10 @@ export default function ProfilePage() {
               <Input
                 id="confirmPassword"
                 type={showConfirm ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                {...passwordForm.register("confirmNewPassword")}
                 placeholder="Confirm new password"
                 className="pr-10"
+                disabled={changePassword.isPending}
               />
               <button
                 type="button"
@@ -539,11 +507,11 @@ export default function ProfilePage() {
           {/* Submit */}
           <div className="flex justify-end pt-2">
             <Button
-              onClick={handleChangePassword}
+              type="submit"
               disabled={
-                !oldPassword ||
-                !newPassword ||
-                !confirmPassword ||
+                !passwordForm.watch("currentPassword") ||
+                !passwordForm.watch("newPassword") ||
+                !passwordForm.watch("confirmNewPassword") ||
                 !passwordsMatch ||
                 changePassword.isPending
               }
@@ -559,7 +527,7 @@ export default function ProfilePage() {
             </Button>
           </div>
 
-        </div>
+        </form>
       </section>
 
     </div>

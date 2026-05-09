@@ -1,57 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { authApi } from '../api';
-
-type VerificationState = 'loading' | 'success' | 'error';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useVerifyEmail } from '@/features/auth/hooks';
+import { ROUTES } from '@/app/routes';
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = (searchParams.get('token') || '').trim();
+  const { token } = useParams<{ token: string }>();
+  const { isPending, isSuccess, isError, error } = useVerifyEmail(token as string);
 
-  const [state, setState] = useState<VerificationState>(token ? 'loading' : 'error');
-  const [errorMessage, setErrorMessage] = useState(
-    token ? '' : 'Invalid verification link'
-  );
-  const hasTriggeredRef = useRef(false);
-  const redirectTimeoutRef = useRef<number | null>(null);
-
-  const verifyEmailMutation = useMutation({
-    mutationFn: (verificationToken: string) => authApi.verifyEmail(verificationToken),
-    onSuccess: () => {
-      setState('success');
-      setErrorMessage('');
-      redirectTimeoutRef.current = window.setTimeout(() => {
-        navigate('/login');
-      }, 3000);
-    },
-    onError: (err: any) => {
-      setState('error');
-      setErrorMessage(
-        err?.response?.data?.message || 'Verification failed. Please request a new verification link.'
-      );
-    },
-  });
-
-  useEffect(() => {
-    if (!token || hasTriggeredRef.current) {
-      return;
-    }
-
-    hasTriggeredRef.current = true;
-    setState('loading');
-    verifyEmailMutation.mutate(token);
-
-    return () => {
-      if (redirectTimeoutRef.current !== null) {
-        window.clearTimeout(redirectTimeoutRef.current);
-      }
-    };
-  }, [token, verifyEmailMutation, navigate]);
-
-  const isLoading = state === 'loading';
-  const isSuccess = state === 'success';
+  const isLoading = isPending;
 
   return (
     <div className="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-body-base overflow-hidden relative">
@@ -152,18 +108,18 @@ export default function VerifyEmailPage() {
             </>
           )}
 
-          {state === 'error' && (
+          {isError && (
             <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-500 w-full">
               <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-2">
                 <span className="material-symbols-outlined text-red-500 text-[48px]">error</span>
               </div>
               <div className="flex flex-col items-center space-y-2">
                 <h2 className="font-display text-[32px] font-bold text-slate-900 tracking-tight">Verification Failed</h2>
-                <p className="font-body-base text-[16px] text-slate-500 leading-relaxed px-4">{errorMessage}</p>
+                <p className="font-body-base text-[16px] text-slate-500 leading-relaxed px-4">{(error as any)?.response?.data?.message || 'Verification failed. Please request a new verification link.'}</p>
               </div>
               <div className="w-full pt-6 space-y-3">
                 <button 
-                  onClick={() => navigate('/resend-verification-email')}
+                  onClick={() => navigate(ROUTES.RESEND_VERIFICATION)}
                   className="w-full h-[48px] bg-slate-900 text-white font-body-base font-semibold rounded-xl shadow-md hover:bg-slate-800 transition-all duration-200"
                 >
                   Resend Email

@@ -1,42 +1,20 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { authApi } from '../api';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { forgotPasswordSchema, type ForgotPasswordInput } from "@/features/auth/schemas/auth.schema";
+import { useForgotPassword } from "@/features/auth/hooks";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-
-  const forgotPasswordMutation = useMutation({
-    mutationFn: async (email: string) => {
-      try {
-        const res = await authApi.forgotPassword(email);
-        if (res.data && res.data.success === false) {
-          const err: any = new Error(res.data.message || 'Failed to send reset link.');
-          err.response = { data: res.data };
-          throw err;
-        }
-        return res;
-      } catch (err: any) {
-        throw err;
-      }
-    },
-    onSuccess: (res: any) => {
-      setSuccess(res.data.message || 'If your email exists, a reset link has been sent.');
-      setError('');
-    },
-    onError: (err: any) => {
-      setError(err.response?.data?.message || err.message || 'Failed to send reset link.');
-      setSuccess('');
-    },
+  const form = useForm<ForgotPasswordInput>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    forgotPasswordMutation.mutate(email);
+  const forgotPassword = useForgotPassword({ setError: form.setError });
+
+  const onSubmit = (values: ForgotPasswordInput) => {
+    form.clearErrors("root");
+    forgotPassword.mutate(values);
   };
 
   return (
@@ -74,13 +52,13 @@ export default function ForgotPasswordPage() {
               </p>
             </div>
 
-            {success ? (
+            {forgotPassword.isSuccess ? (
               <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-500">
                 <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-2">
                   <span className="material-symbols-outlined text-emerald-500 text-[32px]">check_circle</span>
                 </div>
                 <div className="text-center space-y-2">
-                  <p className="font-body-base text-[16px] text-slate-600 leading-relaxed px-2">{success}</p>
+                  <p className="font-body-base text-[16px] text-slate-600 leading-relaxed px-2">If your email exists, a reset link has been sent.</p>
                 </div>
                 <button 
                   onClick={() => window.open('https://mail.google.com', '_blank')}
@@ -97,16 +75,16 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {form.formState.errors.root && (
                   <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-600 flex items-start gap-3 animate-in fade-in duration-300">
                     <span className="material-symbols-outlined text-red-500 shrink-0">error</span>
-                    <span>{error}</span>
+                    <span>{form.formState.errors.root.message}</span>
                   </div>
                 )}
                 
                 <div className="space-y-2">
-                  <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${error ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                  <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.email ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                       <span className="material-symbols-outlined text-[20px]">mail</span>
                     </div>
@@ -114,22 +92,23 @@ export default function ForgotPasswordPage() {
                       id="email" 
                       type="email"
                       placeholder="john@example.com" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      disabled={forgotPasswordMutation.isPending}
+                      {...form.register("email")}
+                      disabled={forgotPassword.isPending}
                       className="w-full h-[52px] pl-12 pr-4 bg-transparent border-none focus:ring-0 font-body-base text-slate-900 outline-none placeholder:text-slate-400" 
                     />
                   </div>
+                  {form.formState.errors.email && (
+                    <p className="mt-1 text-xs text-red-500 pl-1">{form.formState.errors.email.message}</p>
+                  )}
                 </div>
 
                 <div className="space-y-4 pt-2">
                   <button 
                     type="submit" 
-                    disabled={forgotPasswordMutation.isPending}
+                    disabled={forgotPassword.isPending}
                     className="w-full h-[52px] bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-70 flex items-center justify-center gap-2"
                   >
-                    {forgotPasswordMutation.isPending ? (
+                    {forgotPassword.isPending ? (
                       <>
                         <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
                         Sending...

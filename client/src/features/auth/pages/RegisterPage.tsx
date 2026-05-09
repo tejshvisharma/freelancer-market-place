@@ -1,91 +1,48 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useRegisterMutation } from '@/features/auth/api';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { registerSchema, type RegisterInput } from "@/features/auth/schemas/auth.schema";
+import { useRegister } from "@/features/auth/hooks";
+
 export default function RegisterPage() {
-  const navigate = useNavigate();
-  const registerMutation = useRegisterMutation();
-  
   const [step, setStep] = useState(1);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [role, setRole] = useState<'client' | 'freelancer'>('client');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  
-  const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
-  const [success, setSuccess] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleNextStep = () => {
-    if (!username || !email) {
-      setError('Please fill in both username and email.');
-      return;
+  const form = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { name: "", email: "", password: "", role: "client", phone: "" },
+  });
+
+  const register = useRegister({ setError: form.setError });
+
+  const handleNextStep = async () => {
+    const isValid = await form.trigger(["name", "email"]);
+    if (isValid) {
+      form.clearErrors("root");
+      setStep(2);
     }
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setFieldErrors({ email: 'Please enter a valid email address.' });
-      return;
-    }
-    setError('');
-    setFieldErrors({});
-    setStep(2);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (step === 1) {
-      handleNextStep();
-      return;
-    }
+  const onSubmit = (values: RegisterInput) => {
+    form.clearErrors("root");
 
-    setError('');
-    setFieldErrors({});
-    setSuccess('');
-
-    if (password !== confirmPassword) {
-      setFieldErrors({ confirmPassword: 'Passwords do not match' });
+    if (values.password !== confirmPassword) {
+      form.setError("root", { type: "manual", message: "Passwords do not match" });
       return;
     }
 
     if (!agreed) {
-      setError('You must agree to the Terms of Service and Privacy Policy.');
+      form.setError("root", { type: "manual", message: "You must agree to the Terms of Service and Privacy Policy." });
       return;
     }
 
-    try {
-      const res = await registerMutation.mutateAsync({ username, fullName: username, email, password, confirmPassword, mobileNumber, role });
-      setSuccess((res.message || 'Registered successfully, check your email for verification.'));
-      setError('');
-      setFieldErrors({});
-      navigate('/verify-email-prompt', { state: { email } });
-    } catch (err: any) {
-      const apiErrors = err.response?.data?.errors;
-      if (Array.isArray(apiErrors)) {
-        const newFieldErrors: { [key: string]: string } = {};
-        apiErrors.forEach((e: { field: string; message: string }) => {
-          newFieldErrors[e.field] = e.message;
-        });
-        setFieldErrors(newFieldErrors);
-        setError(err.response?.data?.message || 'Registration failed. Please check the fields.');
-        setSuccess('');
-        
-        // Go back to step 1 if the error is related to username or email
-        if (newFieldErrors.username || newFieldErrors.email) {
-          setStep(1);
-        }
-      } else {
-        setError(err.response?.data?.message || 'Registration failed. Please try again.');
-        setSuccess('');
-      }
-    }
+    register.mutate(values);
   };
 
   const pageVariants = {
@@ -199,10 +156,10 @@ export default function RegisterPage() {
               </p>
             </header>
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
               
               <AnimatePresence mode="wait">
-                {success && (
+                {register.isSuccess && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -213,16 +170,11 @@ export default function RegisterPage() {
                       <span className="material-symbols-outlined text-emerald-600">check_circle</span>
                       <strong className="font-semibold text-emerald-800">Success!</strong>
                     </div>
-                    {success}
-                    <div className="mt-4">
-                      <Link to="/login" className="inline-flex items-center justify-center w-full h-10 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors">
-                        Go to Login
-                      </Link>
-                    </div>
+                    Account created successfully.
                   </motion.div>
                 )}
 
-                {error && !success && (
+                {form.formState.errors.root && !register.isSuccess && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -230,14 +182,14 @@ export default function RegisterPage() {
                     className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-600 mb-6 flex items-start gap-3"
                   >
                     <span className="material-symbols-outlined text-red-500 shrink-0">error</span>
-                    <span>{error}</span>
+                    <span>{form.formState.errors.root.message}</span>
                   </motion.div>
                 )}
               </AnimatePresence>
 
               <motion.div 
-                variants={error ? shakeVariants : undefined}
-                animate={error ? "shake" : undefined}
+                variants={form.formState.errors.root ? shakeVariants : undefined}
+                animate={form.formState.errors.root ? "shake" : undefined}
               >
                 <div className="relative overflow-hidden min-h-[160px]">
                   <AnimatePresence mode="wait">
@@ -254,7 +206,7 @@ export default function RegisterPage() {
                       >
                         {/* Username Field */}
                         <div>
-                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${fieldErrors.username ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.name ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                               <span className="material-symbols-outlined text-[20px]">person</span>
                             </div>
@@ -263,20 +215,18 @@ export default function RegisterPage() {
                               id="username" 
                               placeholder="Username" 
                               type="text"
-                              value={username}
-                              onChange={(e) => setUsername(e.target.value)}
-                              disabled={registerMutation.isPending || !!success}
-                              required
+                              {...form.register("name")}
+                              disabled={register.isPending}
                             />
                           </div>
-                          {fieldErrors.username && (
-                            <p className="mt-1.5 text-xs text-red-500 pl-1">{fieldErrors.username}</p>
+                          {form.formState.errors.name && (
+                            <p className="mt-1.5 text-xs text-red-500 pl-1">{form.formState.errors.name.message}</p>
                           )}
                         </div>
 
                         {/* Email Field */}
                         <div>
-                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${fieldErrors.email ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.email ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                               <span className="material-symbols-outlined text-[20px]">mail</span>
                             </div>
@@ -285,14 +235,12 @@ export default function RegisterPage() {
                               id="email" 
                               placeholder="Email address" 
                               type="email"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              disabled={registerMutation.isPending || !!success}
-                              required
+                              {...form.register("email")}
+                              disabled={register.isPending}
                             />
                           </div>
-                          {fieldErrors.email && (
-                            <p className="mt-1.5 text-xs text-red-500 pl-1">{fieldErrors.email}</p>
+                          {form.formState.errors.email && (
+                            <p className="mt-1.5 text-xs text-red-500 pl-1">{form.formState.errors.email.message}</p>
                           )}
                         </div>
                       </motion.div>
@@ -312,10 +260,10 @@ export default function RegisterPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <button 
                             type="button"
-                            onClick={() => setRole('client')}
-                            className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all duration-200 text-center ${role === 'client' ? 'border-slate-900 bg-slate-50 shadow-sm scale-[1.02]' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                            onClick={() => form.setValue("role", "client")}
+                            className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all duration-200 text-center ${form.watch("role") === 'client' ? 'border-slate-900 bg-slate-50 shadow-sm scale-[1.02]' : 'border-slate-200 bg-white hover:border-slate-300'}`}
                           >
-                            <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${role === 'client' ? 'bg-slate-200 text-slate-900' : 'bg-slate-50 text-slate-400'}`}>
+                            <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${form.watch("role") === 'client' ? 'bg-slate-200 text-slate-900' : 'bg-slate-50 text-slate-400'}`}>
                               <span className="material-symbols-outlined text-[28px]">person</span>
                             </div>
                             <p className="font-body-base text-sm font-semibold text-slate-900 mb-1">Hire Talent</p>
@@ -324,10 +272,10 @@ export default function RegisterPage() {
                           
                           <button 
                             type="button"
-                            onClick={() => setRole('freelancer')}
-                            className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all duration-200 text-center ${role === 'freelancer' ? 'border-slate-900 bg-slate-50 shadow-sm scale-[1.02]' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                            onClick={() => form.setValue("role", "freelancer")}
+                            className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all duration-200 text-center ${form.watch("role") === 'freelancer' ? 'border-slate-900 bg-slate-50 shadow-sm scale-[1.02]' : 'border-slate-200 bg-white hover:border-slate-300'}`}
                           >
-                            <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${role === 'freelancer' ? 'bg-slate-200 text-slate-900' : 'bg-slate-50 text-slate-400'}`}>
+                            <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${form.watch("role") === 'freelancer' ? 'bg-slate-200 text-slate-900' : 'bg-slate-50 text-slate-400'}`}>
                               <span className="material-symbols-outlined text-[28px]">work</span>
                             </div>
                             <p className="font-body-base text-sm font-semibold text-slate-900 mb-1">Freelancer</p>
@@ -337,7 +285,7 @@ export default function RegisterPage() {
 
                         {/* Password Field */}
                         <div>
-                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${fieldErrors.password ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.password ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                               <span className="material-symbols-outlined text-[20px]">lock</span>
                             </div>
@@ -346,10 +294,8 @@ export default function RegisterPage() {
                               id="password" 
                               placeholder="Create a password" 
                               type={showPassword ? "text" : "password"}
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              disabled={registerMutation.isPending || !!success}
-                              required
+                              {...form.register("password")}
+                              disabled={register.isPending}
                             />
                             <button 
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 outline-none rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center" 
@@ -362,14 +308,14 @@ export default function RegisterPage() {
                               </span>
                             </button>
                           </div>
-                          {fieldErrors.password && (
-                            <p className="mt-1.5 text-xs text-red-500 pl-1">{fieldErrors.password}</p>
+                          {form.formState.errors.password && (
+                            <p className="mt-1.5 text-xs text-red-500 pl-1">{form.formState.errors.password.message}</p>
                           )}
                         </div>
 
                         {/* Confirm Password Field */}
                         <div>
-                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${fieldErrors.confirmPassword ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white`}>
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                               <span className="material-symbols-outlined text-[20px]">lock_clock</span>
                             </div>
@@ -380,8 +326,7 @@ export default function RegisterPage() {
                               type={showConfirmPassword ? "text" : "password"}
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}
-                              disabled={registerMutation.isPending || !!success}
-                              required
+                              disabled={register.isPending}
                             />
                             <button 
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 outline-none rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center" 
@@ -394,14 +339,11 @@ export default function RegisterPage() {
                               </span>
                             </button>
                           </div>
-                          {fieldErrors.confirmPassword && (
-                            <p className="mt-1.5 text-xs text-red-500 pl-1">{fieldErrors.confirmPassword}</p>
-                          )}
                         </div>
 
                         {/* Mobile Number Field */}
                         <div>
-                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${fieldErrors.mobileNumber ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                          <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.phone ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                               <span className="material-symbols-outlined text-[20px]">call</span>
                             </div>
@@ -410,13 +352,12 @@ export default function RegisterPage() {
                               id="mobileNumber" 
                               placeholder="Mobile Number (Optional)" 
                               type="tel"
-                              value={mobileNumber}
-                              onChange={(e) => setMobileNumber(e.target.value)}
-                              disabled={registerMutation.isPending || !!success}
+                              {...form.register("phone")}
+                              disabled={register.isPending}
                             />
                           </div>
-                          {fieldErrors.mobileNumber && (
-                            <p className="mt-1.5 text-xs text-red-500 pl-1">{fieldErrors.mobileNumber}</p>
+                          {form.formState.errors.phone && (
+                            <p className="mt-1.5 text-xs text-red-500 pl-1">{form.formState.errors.phone.message}</p>
                           )}
                         </div>
 
@@ -428,7 +369,7 @@ export default function RegisterPage() {
                               type="checkbox"
                               checked={agreed}
                               onChange={(e) => setAgreed(e.target.checked)}
-                              disabled={registerMutation.isPending || !!success}
+                              disabled={register.isPending}
                             />
                             <span className="material-symbols-outlined absolute text-white text-[14px] pointer-events-none opacity-0 peer-checked:opacity-100">check</span>
                           </div>
@@ -448,7 +389,7 @@ export default function RegisterPage() {
                   <button 
                     type="button"
                     onClick={() => setStep(1)}
-                    disabled={registerMutation.isPending || !!success}
+                    disabled={register.isPending}
                     className="h-14 px-6 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center disabled:opacity-50"
                   >
                     <span className="material-symbols-outlined text-[20px]">arrow_back</span>
@@ -458,17 +399,18 @@ export default function RegisterPage() {
                 <motion.button 
                   whileHover={{ scale: 1.01, y: -1 }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex-1 h-14 rounded-xl bg-slate-900 text-white font-body-base font-semibold text-[16px] flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_0_rgb(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] hover:bg-slate-800 disabled:opacity-70 disabled:hover:scale-100 disabled:hover:y-0" 
-                  type="submit"
-                  disabled={registerMutation.isPending || !!success}
+                  className="flex-1 h-14 rounded-xl bg-slate-900 text-white font-body-base font-semibold text-[16px] flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_0_rgb(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] hover:bg-slate-800 disabled:opacity-70 disabled:hover:scale-100 disabled:hover:translate-y-0" 
+                  type={step === 1 ? 'button' : 'submit'}
+                  onClick={step === 1 ? handleNextStep : undefined}
+                  disabled={register.isPending}
                 >
-                  {registerMutation.isPending ? (
+                  {register.isPending ? (
                     <span className="material-symbols-outlined animate-spin">sync</span>
                   ) : null}
-                  {registerMutation.isPending 
+                  {register.isPending 
                     ? 'Creating account...' 
                     : step === 1 ? 'Continue' : 'Create Account'}
-                  {!registerMutation.isPending && step === 1 && (
+                  {!register.isPending && step === 1 && (
                     <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                   )}
                 </motion.button>

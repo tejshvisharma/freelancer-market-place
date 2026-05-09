@@ -1,30 +1,31 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useLoginMutation } from '@/features/auth/api';
-import { resendVerificationEmail } from '../resendVerification';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth.schema";
+import { useLogin } from "@/features/auth/hooks";
+
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const loginMutation = useLoginMutation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [resendUrl, setResendUrl] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<string>('');
+  const navigate = useNavigate();
+  const form = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const login = useLogin({ setError: form.setError });
+
+  const onSubmit = async (values: LoginInput) => {
     setResendUrl(null);
     setResendStatus('');
 
     try {
-      await loginMutation.mutateAsync({ email, password });
-      navigate('/dashboard');
+      await login.mutateAsync(values);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
       // If backend provides resendEmailLink, show resend button
       const resend = err.response?.data?.errors?.resendEmailLink;
       if (resend) {
@@ -37,8 +38,12 @@ export default function LoginPage() {
     if (!resendUrl) return;
     setResendStatus('');
     try {
-      const  resendRes = await resendVerificationEmail(resendUrl, email);
-      setResendStatus(resendRes.data.message ||'Verification email sent. Please check your inbox.');
+      navigate('/resend-verification', {
+        state: {
+          email: resendUrl,
+        },
+      });
+      
     } catch (err: any) {
       setResendStatus('Failed to resend verification email. Please try again.');
     }
@@ -117,17 +122,17 @@ export default function LoginPage() {
             <p className="font-body-base text-slate-500">Please enter your details to sign in.</p>
           </header>
 
-          <form className="space-y-stack-lg" onSubmit={handleSubmit}>
+          <form className="space-y-stack-lg" onSubmit={form.handleSubmit(onSubmit)}>
             
             <AnimatePresence>
-              {error && (
+              {form.formState.errors.root && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0, y: -10 }}
                   animate={{ opacity: 1, height: 'auto', y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
                   className="rounded-md border border-status-error/30 bg-status-error/10 p-3 text-sm text-status-error mb-4"
                 >
-                  {error}
+                  {form.formState.errors.root.message}
                   {resendUrl && (
                     <div className="mt-3">
                       <button 
@@ -148,12 +153,12 @@ export default function LoginPage() {
             </AnimatePresence>
 
             <motion.div 
-              variants={error ? shakeVariants : undefined}
-              animate={error ? "shake" : undefined}
+              variants={form.formState.errors.root ? shakeVariants : undefined}
+              animate={form.formState.errors.root ? "shake" : undefined}
               className="space-y-stack-lg"
             >
               {/* Email Field */}
-              <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${error ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+              <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.email ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                   <span className="material-symbols-outlined text-[20px]">mail</span>
                 </div>
@@ -162,15 +167,16 @@ export default function LoginPage() {
                   id="email" 
                   placeholder="Email address" 
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loginMutation.isPending}
-                  required
+                  {...form.register("email")}
+                  disabled={login.isPending}
                 />
               </div>
+              {form.formState.errors.email && (
+                <p className="mt-1 text-xs text-red-500">{form.formState.errors.email.message}</p>
+              )}
 
               {/* Password Field */}
-              <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${error ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+              <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.password ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
                   <span className="material-symbols-outlined text-[20px]">lock</span>
                 </div>
@@ -179,10 +185,8 @@ export default function LoginPage() {
                   id="password" 
                   placeholder="Password" 
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loginMutation.isPending}
-                  required
+                  {...form.register("password")}
+                  disabled={login.isPending}
                 />
                 <button 
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 outline-none rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center" 
@@ -194,6 +198,9 @@ export default function LoginPage() {
                   </span>
                 </button>
               </div>
+              {form.formState.errors.password && (
+                <p className="mt-1 text-xs text-red-500">{form.formState.errors.password.message}</p>
+              )}
             </motion.div>
 
             {/* Remember & Forgot */}
@@ -215,12 +222,12 @@ export default function LoginPage() {
                 whileTap={{ scale: 0.98 }}
                 className="w-full h-14 rounded-xl bg-slate-900 text-white font-body-base font-semibold text-[16px] flex items-center justify-center transition-all shadow-[0_4px_14px_0_rgb(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] hover:bg-slate-800 disabled:opacity-70 disabled:hover:scale-100 disabled:hover:y-0" 
                 type="submit"
-                disabled={loginMutation.isPending}
+                disabled={login.isPending}
               >
-                {loginMutation.isPending ? (
+                {login.isPending ? (
                   <span className="material-symbols-outlined animate-spin mr-2">sync</span>
                 ) : null}
-                {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
+                {login.isPending ? 'Signing in...' : 'Sign In'}
               </motion.button>
 
               <div className="relative flex items-center py-4">
@@ -234,7 +241,7 @@ export default function LoginPage() {
                 whileTap={{ scale: 0.98 }}
                 className="w-full h-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center space-x-3 transition-all hover:bg-slate-50 hover:border-slate-300 shadow-sm" 
                 type="button"
-                disabled={loginMutation.isPending}
+                disabled={login.isPending}
               >
                 <img alt="Google Logo" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDqTaaaD9n4TYPBq70PKdGqXhpWDnSd6YHMDubEcLZlXZOIm6Q04YzJRJOy1fC8tIY61XkM5xD-DMzzPYGq_-yAsTh9rdFWDQjIsOHbzZqaVvYrhvyIwTsbgUFeUcUhUnfSm9smm17b1LNyMkXH-69EUn2bqAUcyOHZMthvXGI_ED9jCIu6nGKZHTAAjkbm06W11Ex47IQtiryrb4lfaInHPNim0sckOkE06tPEXKipWLpOVYA5vnoZVWoZyFe3uVw72Qq4eJCBApJ"/>
                 <span className="font-body-base font-semibold text-slate-700">Continue with Google</span>

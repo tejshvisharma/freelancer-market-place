@@ -1,44 +1,26 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { authApi } from '../api';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { resetPasswordSchema, type ResetPasswordInput } from "@/features/auth/schemas/auth.schema";
+import { useResetPassword } from "@/features/auth/hooks";
 
 export default function ResetPasswordPage() {
-  const [searchParams] = useSearchParams();
+  const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const token = searchParams.get('token') || '';
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  const resetPasswordMutation = useMutation({
-    mutationFn: (payload: { token: string; newPassword: string }) =>
-      authApi.resetPassword(payload.token, payload.newPassword),
-    onSuccess: (res: any) => {
-      setSuccess(res.data.message || 'Password reset successful. You can now log in.');
-      setError('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => navigate('/login'), 2500);
-    },
-    onError: (err: any) => {
-      setError(err.response?.data?.message || 'Failed to reset password.');
-      setSuccess('');
-    },
+  const form = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-    resetPasswordMutation.mutate({ token, newPassword });
+  const resetPassword = useResetPassword({ token, setError: form.setError });
+
+  const onSubmit = (values: ResetPasswordInput) => {
+    form.clearErrors("root");
+    resetPassword.mutate(values);
   };
 
   return (
@@ -101,7 +83,7 @@ export default function ResetPasswordPage() {
           
           <div className="bg-white p-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
             
-            {!success ? (
+            {!resetPassword.isSuccess ? (
               <>
                 <div className="text-center space-y-2 mb-8">
                   <div className="mx-auto w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6">
@@ -113,69 +95,75 @@ export default function ResetPasswordPage() {
                   </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {error && (
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                  {form.formState.errors.root && (
                     <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-600 flex items-start gap-3 animate-in fade-in duration-300">
                       <span className="material-symbols-outlined text-red-500 shrink-0">error</span>
-                      <span>{error}</span>
+                      <span>{form.formState.errors.root.message}</span>
                     </div>
                   )}
 
                   <div className="space-y-4">
-                    <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${error ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
-                        <span className="material-symbols-outlined text-[20px]">lock</span>
+                    <div>
+                      <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.password ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
+                          <span className="material-symbols-outlined text-[20px]">lock</span>
+                        </div>
+                        <input 
+                          id="password" 
+                          type={showPassword ? "text" : "password"}
+                          placeholder="New Password" 
+                          {...form.register("password")}
+                          disabled={resetPassword.isPending}
+                          className="w-full h-[52px] pl-12 pr-12 bg-transparent border-none focus:ring-0 font-body-base text-slate-900 outline-none placeholder:text-slate-400" 
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 outline-none rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
+                        </button>
                       </div>
-                      <input 
-                        id="newPassword" 
-                        type={showPassword ? "text" : "password"}
-                        placeholder="New Password" 
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        disabled={resetPasswordMutation.isPending}
-                        className="w-full h-[52px] pl-12 pr-12 bg-transparent border-none focus:ring-0 font-body-base text-slate-900 outline-none placeholder:text-slate-400" 
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 outline-none rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
-                      </button>
+                      {form.formState.errors.password && (
+                        <p className="mt-1 text-xs text-red-500 pl-1">{form.formState.errors.password.message}</p>
+                      )}
                     </div>
 
-                    <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${error ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
-                        <span className="material-symbols-outlined text-[20px]">lock_clock</span>
+                    <div>
+                      <div className={`relative w-full rounded-xl transition-all duration-200 border bg-slate-50/50 ${form.formState.errors.confirmPassword ? 'border-red-300 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:bg-white'}`}>
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none flex items-center">
+                          <span className="material-symbols-outlined text-[20px]">lock_clock</span>
+                        </div>
+                        <input 
+                          id="confirmPassword" 
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="Confirm New Password" 
+                          {...form.register("confirmPassword")}
+                          disabled={resetPassword.isPending}
+                          className="w-full h-[52px] pl-12 pr-12 bg-transparent border-none focus:ring-0 font-body-base text-slate-900 outline-none placeholder:text-slate-400" 
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 outline-none rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">{showConfirmPassword ? 'visibility_off' : 'visibility'}</span>
+                        </button>
                       </div>
-                      <input 
-                        id="confirmPassword" 
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Confirm New Password" 
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        disabled={resetPasswordMutation.isPending}
-                        className="w-full h-[52px] pl-12 pr-12 bg-transparent border-none focus:ring-0 font-body-base text-slate-900 outline-none placeholder:text-slate-400" 
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 outline-none rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">{showConfirmPassword ? 'visibility_off' : 'visibility'}</span>
-                      </button>
+                      {form.formState.errors.confirmPassword && (
+                        <p className="mt-1 text-xs text-red-500 pl-1">{form.formState.errors.confirmPassword.message}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="pt-2 space-y-4">
                     <button 
                       type="submit" 
-                      disabled={resetPasswordMutation.isPending}
+                      disabled={resetPassword.isPending}
                       className="w-full h-[52px] bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-70 flex items-center justify-center gap-2"
                     >
-                      {resetPasswordMutation.isPending ? (
+                      {resetPassword.isPending ? (
                         <>
                           <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
                           Resetting...
@@ -197,7 +185,7 @@ export default function ResetPasswordPage() {
                 </div>
                 <div className="pop-effect flex flex-col items-center space-y-2 text-center">
                   <h2 className="font-display text-[32px] font-bold text-slate-900 tracking-tight">Password Reset!</h2>
-                  <p className="font-body-base text-[16px] text-slate-500 leading-relaxed">{success}</p>
+                  <p className="font-body-base text-[16px] text-slate-500 leading-relaxed">Password reset successful. You can now log in.</p>
                 </div>
                 <div className="w-full pt-4 pop-effect" style={{ animationDelay: '1s' }}>
                   <button 

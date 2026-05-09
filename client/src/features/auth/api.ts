@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient, authHydrationClient, clearCsrfToken, setCSRFToken } from '@/lib/axios';
+import { apiClient, authHydrationClient, } from '@/lib/axios';
 import { useAuthStore } from '@/stores/auth.store';
 import { LoginPayload, RegisterPayload, UserProfile } from "./types";
 // Types
@@ -36,10 +36,8 @@ export const getCSRFToken = async () => {
         const res = await authHydrationClient.get<csrfTokenResponse>('/auth/csrf-token');
         const token = res.data.data.csrfToken;
 
-        setCSRFToken(token ?? null);
         return token ?? null;
     } catch (error) {
-        setCSRFToken(null);
         return null;
     }
 }
