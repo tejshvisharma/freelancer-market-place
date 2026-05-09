@@ -3,25 +3,16 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/stores/auth.store";
 
-/* ────────────────────────────────────────────────────────────────
-   🛡️ CSRF TOKEN STORAGE (IN-MEMORY ONLY)
-   ──────────────────────────────────────────────────────────────── */
 
-let csrfToken: string | null = null;
 
-export const setCSRFToken = (token: string | null) => {
-    const normalized = typeof token === "string" ? token.trim() : "";
-    csrfToken = normalized.length > 0 ? normalized : null;
-};
 
-export function clearCsrfToken() { csrfToken = null; }
 /* ────────────────────────────────────────────────────────────────
    🌐 API CLIENTS
    ──────────────────────────────────────────────────────────────── */
 
 // Main API client WITH interceptors (for protected routes)
 export const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL,
+    baseURL: "/api/v1",
     withCredentials: true,
     headers: {
         "Content-Type": "application/json",
@@ -30,23 +21,13 @@ export const apiClient = axios.create({
 
 // Minimal client WITHOUT interceptors (for auth hydration only)
 export const authHydrationClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL,
-    withCredentials: true,
-    headers: {
-        "Content-Type": "application/json",
-    },
+  baseURL: "/api/v1",
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-/* ────────────────────────────────────────────────────────────────
-   🛡️ REQUEST INTERCEPTOR (CSRF HEADER ATTACH)
-   ──────────────────────────────────────────────────────────────── */
-
-apiClient.interceptors.request.use((config) => {
-    if (csrfToken) {
-        config.headers["x-csrf-token"] = csrfToken;
-    }
-    return config;
-});
 
 let isRefreshing = false;
 let failedQueue: {

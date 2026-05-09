@@ -1,7 +1,7 @@
 
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
-
+import { ROUTES } from './routes';
 // Eager load only what's needed before auth check
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { PublicRoute } from '@/components/layout/PublicRoute';
@@ -16,8 +16,15 @@ const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage'));
 const VerifyEmailPage = lazy(() => import('@/features/auth/pages/VerifyEmailPage'));
+const VerifyEmailPromptPage = lazy(() => import('@/features/auth/pages/VerifyEmailPromptPage'));
 const ResendVerificationEmailPage = lazy(() => import('@/features/auth/pages/ResendVerificationEmailPage'));
+const TwoFactorEnablePage = lazy(() => import('@/features/auth/pages/TwoFactorEnablePage'));
+const TwoFactorPage = lazy(() => import('@/features/auth/pages/TwoFactorPage'));
 
+// Lazy loaded Dashboard Pages
+const ClientDashboard = lazy(() => import('@/pages/dashboard/ClientDashboard'));
+const FreelancerDashboard = lazy(() => import('@/pages/dashboard/FreelancerDashboard'));
+const AdminDashboard = lazy(() => import('@/pages/dashboard/AdminDashboard'));
 
 
 /**
@@ -51,6 +58,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/verify-email-prompt',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <VerifyEmailPromptPage />
+      </Suspense>
+    ),
+  },
+  {
     path: '/resend-verification-email',
     element: (
       <Suspense fallback={<PageLoader />}>
@@ -59,10 +74,18 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: ROUTES.TWO_FACTOR,
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <TwoFactorPage />
+      </Suspense>
+    ),
+  },
+  {
     element: <PublicRoute />,
     children: [
       {
-        path: '/login',
+        path: ROUTES.LOGIN,
         element: (
           <Suspense fallback={<PageLoader />}>
             <LoginPage />
@@ -70,7 +93,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/register',
+        path: ROUTES.REGISTER,
         element: (
           <Suspense fallback={<PageLoader />}>
             <RegisterPage />
@@ -78,7 +101,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/forgot-password',
+        path: ROUTES.FORGOT_PASSWORD,
         element: (
           <Suspense fallback={<PageLoader />}>
             <ForgotPasswordPage />
@@ -94,13 +117,37 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           {
-            path: '/dashboard',
+            path: ROUTES.DASHBOARD_CLIENT,
             element: (
               <Suspense fallback={<PageLoader />}>
-                <dashboard />
+                <ClientDashboard />
               </Suspense>
             ),
-        }
+          },
+          {
+            path: ROUTES.DASHBOARD_FREELANCER,
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <FreelancerDashboard />
+              </Suspense>
+            ),
+          },
+          {
+            path: ROUTES.DASHBOARD_ADMIN,
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <AdminDashboard />
+              </Suspense>
+            ),
+          },
+          {
+            path: ROUTES.TWO_FACTOR_SETUP,
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <TwoFactorEnablePage />
+              </Suspense>
+            ),
+          }
         ],
       },
     ],

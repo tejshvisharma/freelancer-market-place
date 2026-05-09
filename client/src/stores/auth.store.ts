@@ -2,28 +2,16 @@ import { create } from 'zustand';
 
 import { apiClient } from '@/lib/axios';
 
-export interface UserProfile {
-    _id: string;
-    username: string;
-    email: string;
-    fullName: string;
-    role: string;
-    avatar?: {
-        url: string;
-        localPath?: string;
-    };
-    isEmailVerified: boolean;
-    createdAt: string;
-    updatedAt: string;
-}
+import { AuthUser } from "../features/auth/types/Auth.types";
+import { authApi } from '@/features/auth/api';
 
 interface AuthState {
-    user: UserProfile | null;
-    isAuthenticated: boolean;
-    isLoading: boolean;
-    setUser: (user: UserProfile) => void;
-    clearUser: () => void;
-    checkAuth: () => Promise<void>;
+  user: AuthUser | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  setUser: (user: AuthUser) => void;
+  clearUser: () => void;
+  checkAuth: () => Promise<void>;
 }
 
 interface ApiResponse<T> {
@@ -32,20 +20,9 @@ interface ApiResponse<T> {
     message: string;
 }
 
-interface UserResponseEnvelope {
-    user: UserProfile;
-}
-
-const extractUser = (data: UserProfile | UserResponseEnvelope): UserProfile => {
-    if (typeof data === 'object' && data !== null && 'user' in data) {
-        return data.user;
-    }
-    return data;
-};
-
-const fetchProfile = async (): Promise<UserProfile> => {
-    const response = await apiClient.get<ApiResponse<UserResponseEnvelope | UserProfile>>('/auth/profile');
-    return extractUser(response.data.data);
+const fetchProfile = async (): Promise<AuthUser> => {
+  const response = await apiClient.get<ApiResponse<{ user: AuthUser }>>("/auth/me");
+  return response.data.data.user;
 };
 
 /**
@@ -58,7 +35,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     isAuthenticated: false,
     isLoading: true, // Start as loading until checkAuth completes
 
-    setUser: (user: UserProfile) => {
+    setUser: (user: AuthUser) => {
         set({
             user,
             isAuthenticated: true,

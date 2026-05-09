@@ -405,4 +405,22 @@
   .text-caption {
     @apply text-xs text-muted-foreground;
   }
+
+  /* Floating label logic */
+  .field-container:focus-within label,
+  .field-container input:not(:placeholder-shown) + label {
+      transform: translateY(-1.25rem) scale(0.85);
+      color: var(--tw-text-primary, #111827);
+  }
+
+  .field-container label {
+      transition: all 0.2s ease-out;
+      pointer-events: none;
+  }
+
+  /* Custom Checkbox */
+  .custom-checkbox:checked {
+      background-color: #4648d4;
+      border-color: #4648d4;
+  }
 }

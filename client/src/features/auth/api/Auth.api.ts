@@ -1,10 +1,10 @@
-import { api } from "@/lib/axios";
-import type { ApiResponse } from "@/types/api.types";
+import { apiClient as api } from "@/lib/axios";
+import type { ApiResponse } from "@/lib/Api.types.ts";
 import type {
   AuthUser,
   LoginResponseData,
   TwoFASetupData,
-} from "../types/auth.types";
+} from "../types/Auth.types";
 import type {
   LoginInput,
   RegisterInput,
