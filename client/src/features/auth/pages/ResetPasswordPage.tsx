@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPasswordSchema, type ResetPasswordInput } from "@/features/auth/schemas/auth.schema";
 import { useResetPassword } from "@/features/auth/hooks";
+import { ROUTES } from "@/app/routes";
 
 export default function ResetPasswordPage() {
   const { token } = useParams<{ token: string }>();
@@ -83,7 +84,28 @@ export default function ResetPasswordPage() {
           
           <div className="bg-white p-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
             
-            {!resetPassword.isSuccess ? (
+            {/* Link expired state: show instead of form on 400/401 */}
+            {resetPassword.isError &&
+             ([400, 401].includes((resetPassword.error as any)?.response?.status)) ? (
+              <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-500">
+                <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-2">
+                  <span className="material-symbols-outlined text-red-500 text-[32px]">link_off</span>
+                </div>
+                <div className="text-center space-y-2">
+                  <h2 className="font-display text-[22px] font-bold text-slate-900 tracking-tight">Link Expired</h2>
+                  <p className="font-body-base text-[16px] text-slate-500 leading-relaxed px-2">
+                    This reset link has expired or is invalid. Please request a new one.
+                  </p>
+                </div>
+                <Link
+                  to={ROUTES.FORGOT_PASSWORD}
+                  className="w-full h-[52px] bg-slate-900 text-white font-semibold rounded-xl shadow-md hover:bg-slate-800 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group"
+                >
+                  <span>Request New Link</span>
+                  <span className="material-symbols-outlined text-[20px] transition-transform group-hover:translate-x-1">arrow_forward</span>
+                </Link>
+              </div>
+            ) : !resetPassword.isSuccess ? (
               <>
                 <div className="text-center space-y-2 mb-8">
                   <div className="mx-auto w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6">

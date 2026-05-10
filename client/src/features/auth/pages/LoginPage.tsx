@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth.schema";
 import { useLogin } from "@/features/auth/hooks";
+import { authApi } from "@/features/auth/api/Auth.api";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -242,6 +243,7 @@ export default function LoginPage() {
                 className="w-full h-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center space-x-3 transition-all hover:bg-slate-50 hover:border-slate-300 shadow-sm" 
                 type="button"
                 disabled={login.isPending}
+                onClick={() => authApi.googleLogin()}
               >
                 <img alt="Google Logo" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDqTaaaD9n4TYPBq70PKdGqXhpWDnSd6YHMDubEcLZlXZOIm6Q04YzJRJOy1fC8tIY61XkM5xD-DMzzPYGq_-yAsTh9rdFWDQjIsOHbzZqaVvYrhvyIwTsbgUFeUcUhUnfSm9smm17b1LNyMkXH-69EUn2bqAUcyOHZMthvXGI_ED9jCIu6nGKZHTAAjkbm06W11Ex47IQtiryrb4lfaInHPNim0sckOkE06tPEXKipWLpOVYA5vnoZVWoZyFe3uVw72Qq4eJCBApJ"/>
                 <span className="font-body-base font-semibold text-slate-700">Continue with Google</span>

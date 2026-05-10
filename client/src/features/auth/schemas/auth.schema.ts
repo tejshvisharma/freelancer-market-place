@@ -67,7 +67,7 @@ export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
     newPassword: passwordField,
-    confirmNewPassword: z.string().min(1, "Please confirm your new password"),
+    
   })
   .refine((d) => d.newPassword === d.confirmNewPassword, {
     message: "Passwords do not match",

@@ -4,6 +4,8 @@ import { apiClient } from '@/lib/axios';
 
 import { AuthUser } from "../features/auth/types/Auth.types";
 import { authApi } from '@/features/auth/api';
+import { queryKeys } from '@/constants/queryKeys';
+import { queryClient } from '@/lib/queryClient';
 
 interface AuthState {
   user: AuthUser | null;
@@ -20,9 +22,17 @@ interface ApiResponse<T> {
     message: string;
 }
 
-const fetchProfile = async (): Promise<AuthUser> => {
-  const response = await apiClient.get<ApiResponse<{ user: AuthUser }>>("/auth/me");
-  return response.data.data.user;
+const fetchAndCacheProfile = async (): Promise<AuthUser> => {
+  const res = await queryClient.fetchQuery({
+    queryKey: queryKeys.auth.me,
+    queryFn: () =>
+      apiClient
+        .get<ApiResponse<{ user: AuthUser }>>("/auth/me")
+        .then((r) => r.data),
+    staleTime: Infinity, // once fetched, never considered stale — no background refetches
+  });
+ 
+  return res.data.user;
 };
 
 /**
@@ -44,6 +54,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     },
 
     clearUser: () => {
+        queryClient.removeQueries({ queryKey: queryKeys.auth.me });
         set({
             user: null,
             isAuthenticated: false,
@@ -53,7 +64,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     checkAuth: async () => {
         try {
-            const user = await fetchProfile();
+            const user = await fetchAndCacheProfile();
 
             set({
                 user,

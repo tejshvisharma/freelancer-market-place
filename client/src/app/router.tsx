@@ -9,6 +9,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 
 // Simple spinner for Suspense fallback
 import { PageLoader } from '@/components/ui/PageLoader';
+import GoogleCallbackPage from '@/features/auth/pages/GoogleCallbackPage';
+import ProfilePage from '@/features/auth/pages/ProfilePage';
 
 // Lazy loaded Auth Pages
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
@@ -65,6 +67,9 @@ export const router = createBrowserRouter([
       </Suspense>
     ),
   },
+  { 
+    path: ROUTES.GOOGLE_CALLBACK,
+    element: <GoogleCallbackPage /> },
   {
     path: ROUTES.RESEND_VERIFICATION,
     element: (
@@ -137,6 +142,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <AdminDashboard />
+              </Suspense>
+            ),
+          },
+          {
+            path: ROUTES.PROFILE_PAGE,
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <ProfilePage />
               </Suspense>
             ),
           },

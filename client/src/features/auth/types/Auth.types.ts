@@ -7,6 +7,8 @@ export interface AuthUser {
   role: UserRole;
   avatar?: string;
   phone?: string;
+  bio?: string;
+  location?: string;
   isEmailVerified: boolean;
   isTwoFactorEnabled: boolean;
   isActive: boolean;

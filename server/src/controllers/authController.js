@@ -506,36 +506,110 @@ const googleAuth = passport.authenticate("google", {
 /**
  * Handle Google OAuth callback and issue tokens.
  */
+// const googleAuthCallback = (req, res, next) => {
+// 	passport.authenticate(
+// 		"google",
+// 		{ session: false, failureRedirect: "/login" },
+// 		async (err, user) => {
+// 			try {
+// 				if (err || !user) {
+// 					return next(new UnauthorizedError("Google authentication failed"));
+// 				}
+
+// 				const accessToken = generateAccessToken(user);
+// 				const refreshTokenValue = generateRefreshToken(user);
+
+// 				await saveRefreshToken(user, refreshTokenValue);
+// 				user.lastLogin = new Date();
+// 				await user.save({ validateBeforeSave: false });
+
+// 				setAuthCookies(res, accessToken, refreshTokenValue);
+
+// 				return successResponse(res, "Google login successful", {
+// 					user: sanitizeUser(user),
+// 					accessToken,
+// 				});
+// 			} catch (error) {
+// 				return next(error);
+// 			}
+// 		},
+// 	)(req, res, next);
+// };
+
+/**
+ * Handle Google OAuth callback and issue tokens.
+ *
+ * BEFORE: returned res.json() → browser showed raw JSON
+ * AFTER:  res.redirect() to frontend → frontend handler hydrates store
+ *
+ * Two redirect branches:
+ *   A) User has 2FA enabled  → redirect with twoFactorToken (same JWT the
+ *      normal login flow uses — frontend /2fa page handles it identically)
+ *   B) Normal Google login   → redirect with accessToken
+ *
+ * The HttpOnly refreshToken cookie is set in BOTH cases before redirecting,
+ * so the browser carries it automatically on all future requests.
+ */
 const googleAuthCallback = (req, res, next) => {
-	passport.authenticate(
-		"google",
-		{ session: false, failureRedirect: "/login" },
-		async (err, user) => {
-			try {
-				if (err || !user) {
-					return next(new UnauthorizedError("Google authentication failed"));
-				}
+  passport.authenticate(
+    "google",
+    { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_failed` },
+    async (err, user) => {
+      try {
+        if (err || !user) {
+          return res.redirect(
+            `${process.env.FRONTEND_URL}/login?error=google_failed`
+          );
+        }
 
-				const accessToken = generateAccessToken(user);
-				const refreshTokenValue = generateRefreshToken(user);
+        const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 
-				await saveRefreshToken(user, refreshTokenValue);
-				user.lastLogin = new Date();
-				await user.save({ validateBeforeSave: false });
+        // ── Branch A: 2FA enabled ───────────────────────────────────────────
+        // Mirror exactly what the normal login controller does:
+        // generate a short-lived 2fa JWT, send it to the frontend 2FA page.
+        // The frontend /2fa page POSTs { twoFactorToken, code } to /2fa/verify
+        // which is already implemented and works identically for both flows.
+        if (user.isTwoFactorEnabled) {
+          const twoFactorSecret = resolveTwoFactorSecret();
+          if (!twoFactorSecret) {
+            return res.redirect(`${FRONTEND_URL}/login?error=server_error`);
+          }
 
-				setAuthCookies(res, accessToken, refreshTokenValue);
+          const twoFactorToken = jwt.sign(
+            { id: user._id.toString(), type: "2fa" },
+            twoFactorSecret,
+            { expiresIn: "10m" }
+          );
 
-				return successResponse(res, "Google login successful", {
-					user: sanitizeUser(user),
-					accessToken,
-				});
-			} catch (error) {
-				return next(error);
-			}
-		},
-	)(req, res, next);
+          // Do NOT set full auth cookies yet — user hasn't passed 2FA
+          // The /2fa/verify endpoint will set them after code is confirmed
+          return res.redirect(
+            `${FRONTEND_URL}/auth/google/callback?requires2FA=true&twoFactorToken=${twoFactorToken}`
+          );
+        }
+
+        // ── Branch B: Normal Google login ───────────────────────────────────
+        const accessToken = generateAccessToken(user);
+        const refreshTokenValue = generateRefreshToken(user);
+
+        await saveRefreshToken(user, refreshTokenValue);
+        user.lastLogin = new Date();
+        await user.save({ validateBeforeSave: false });
+
+        // Set HttpOnly cookies — browser carries refreshToken automatically
+        setAuthCookies(res, accessToken, refreshTokenValue);
+
+        // Pass accessToken in query param — frontend reads it once, then
+        // navigates away so it never sits in the URL bar for long
+        return res.redirect(
+          `${FRONTEND_URL}/auth/google/callback?accessToken=${accessToken}`
+        );
+      } catch (error) {
+        return next(error);
+      }
+    }
+  )(req, res, next);
 };
-
 export {
 	register,
 	login,

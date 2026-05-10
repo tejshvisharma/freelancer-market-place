@@ -52,7 +52,7 @@ export const useLogin = ({ setError }: UseLoginOptions) => {
       }
 
       // ── Branch B: Normal login ──────────────────────────────────────────
-      if ("accessToken" in payload) {
+      if ("user" in payload) {
         setAuth(payload.user);
 
         // Pre-populate the /me query cache so the first protected page

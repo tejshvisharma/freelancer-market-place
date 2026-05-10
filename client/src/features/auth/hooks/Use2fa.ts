@@ -36,16 +36,16 @@ export const useVerifySetup2FA = ({
   onSuccess,
 }: UseVerifySetup2FAOptions) => {
   const queryClient = useQueryClient();
-  const setAuth = useAuthStore((s) => s.setUser);
-  const { user } = useAuthStore();
+  const setUser = useAuthStore((s) => s.setUser);
+  const user = useAuthStore((s) => s.user);
 
   return useMutation({
     mutationFn: (data: TwoFACodeInput) => authApi.verifySetup2FA(data),
 
-    onSuccess: (res) => {
+    onSuccess: () => {
       // Patch the user in store so isTwoFactorEnabled flips immediately
       if (user) {
-        setAuth({ ...user, isTwoFactorEnabled: true });
+        setUser({ ...user, isTwoFactorEnabled: true });
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
       toast.success("Two-factor authentication enabled.");
@@ -90,15 +90,15 @@ export const useDisable2FA = ({
   onSuccess,
 }: UseDisable2FAOptions) => {
   const queryClient = useQueryClient();
-  const setAuth = useAuthStore((s) => s.setAuth);
-  const { user, accessToken } = useAuthStore();
+  const setUser = useAuthStore((s) => s.setUser);
+  const user = useAuthStore((s) => s.user);
 
   return useMutation({
     mutationFn: (data: TwoFACodeInput) => authApi.disable2FA(data),
 
     onSuccess: () => {
-      if (user && accessToken) {
-        setAuth({ ...user, isTwoFactorEnabled: false }, accessToken);
+      if (user) {
+        setUser({ ...user, isTwoFactorEnabled: false });
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
       toast.success("Two-factor authentication disabled.");

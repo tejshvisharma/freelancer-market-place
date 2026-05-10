@@ -32,8 +32,7 @@ export const useChangePassword = ({ setError }: UseChangePasswordOptions) => {
     mutationFn: (data: ChangePasswordInput) =>
       authApi.changePassword({
         currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-        confirmNewPassword: data.confirmNewPassword,
+        newPassword: data.newPassword
       }),
 
     onSuccess: () => {

@@ -9,7 +9,8 @@ export const ROUTES = {
   TWO_FACTOR_SETUP: "/2fa/setup",
   VERIFY_PENDING: "/verify-email-prompt",
   RESEND_VERIFICATION: "/resend-verification",
-
+  GOOGLE_CALLBACK: "/auth/google/callback",
+  PROFILE_PAGE : "/profile",
   // Dashboards
   DASHBOARD_CLIENT: "/dashboard/client",
   DASHBOARD_FREELANCER: "/dashboard/freelancer",

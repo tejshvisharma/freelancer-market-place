@@ -1,535 +1,751 @@
-import { useState, useRef } from 'react';
+// src/pages/auth/ProfilePage.tsx
+
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '@/stores/auth.store';
+import { useUpdateProfile, useChangePassword, useInitSetup2FA, useVerifySetup2FA, useDisable2FA } from '@/features/auth/hooks';
+import { updateProfileSchema, changePasswordSchema, twoFACodeSchema } from '@/features/auth/schemas/auth.schema';
+import type { UpdateProfileInput, ChangePasswordInput, TwoFACodeInput } from '@/features/auth/schemas/auth.schema';
+import { ROUTES } from '@/app/routes';
 import {
-  Camera, Loader2, Eye, EyeOff,
-  CheckCircle2, Shield, Pencil, X, Check,
-} from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
 import {
-  useProfileQuery,
-  useUpdateAvatarMutation,
-} from '../api';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { 
-  updateProfileSchema, type UpdateProfileInput,
-  changePasswordSchema, type ChangePasswordInput 
-} from "@/features/auth/schemas/auth.schema";
-import { useUpdateProfile, useChangePassword } from "@/features/auth/hooks";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  User,
+  Mail,
+  Shield,
+  CheckCircle,
+  XCircle,
+  Eye,
+  EyeOff,
+  Lock,
+  Phone,
+  MapPin,
+  FileText,
+  Camera,
+  Key,
+  Smartphone,
+  AlertCircle,
+  Loader2,
+  QrCode,
+  Copy,
+} from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
-// ── Password strength helper ───────────────────────────────────────────────────
-function getPasswordStrength(pwd: string) {
-  let score = 0;
-  if (pwd.length >= 8)           score++;
-  if (/[A-Z]/.test(pwd))         score++;
-  if (/[0-9]/.test(pwd))         score++;
-  if (/[^A-Za-z0-9]/.test(pwd))  score++;
+// ==================== TYPES ====================
 
-  const config = [
-    { label: 'Weak',   color: 'bg-red-500',    text: 'text-red-500'    },
-    { label: 'Weak',   color: 'bg-red-500',    text: 'text-red-500'    },
-    { label: 'Fair',   color: 'bg-yellow-500', text: 'text-yellow-500' },
-    { label: 'Good',   color: 'bg-blue-500',   text: 'text-blue-500'   },
-    { label: 'Strong', color: 'bg-green-500',  text: 'text-green-500'  },
-  ];
+type SectionKey = 'overview' | 'profile' | 'password' | '2fa';
 
-  return { score, ...config[score] };
-}
+// ==================== SUB-COMPONENTS ====================
 
-export default function ProfilePage() {
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { data: profile, isLoading } = useProfileQuery();
-  const updateAvatar = useUpdateAvatarMutation();
-
-  const profileForm = useForm<UpdateProfileInput & { username?: string }>({
-    resolver: zodResolver(updateProfileSchema),
-    defaultValues: { name: "", username: "" },
-  });
-
-  const passwordForm = useForm<ChangePasswordInput>({
-    resolver: zodResolver(changePasswordSchema),
-    defaultValues: { currentPassword: "", newPassword: "", confirmNewPassword: "" },
-  });
-
-  const updateProfile = useUpdateProfile({ setError: profileForm.setError as any });
-  const changePassword = useChangePassword({ setError: passwordForm.setError });
-
-  // ── Derived ────────────────────────────────────────────────────────────────
-  const memberSince = profile?.createdAt
-    ? new Date(profile.createdAt).toLocaleDateString('en-US', {
-        month: 'long', year: 'numeric',
-      })
-    : null;
-
-  const newPasswordValue = passwordForm.watch("newPassword");
-  const strength = newPasswordValue ? getPasswordStrength(newPasswordValue) : null;
-
-  const passwordsMatch =
-    passwordForm.watch("confirmNewPassword")?.length > 0 && 
-    newPasswordValue === passwordForm.watch("confirmNewPassword");
-
-  // ── Profile edit handlers ──────────────────────────────────────────────────
-  const handleStartEdit = () => {
-    profileForm.setValue("name", profile?.fullName ?? '');
-    profileForm.setValue("username", profile?.username ?? '');
-    profileForm.clearErrors("root");
-    setIsEditingProfile(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditingProfile(false);
-    profileForm.clearErrors("root");
-  };
-
-  const handleSaveProfile = (values: UpdateProfileInput & { username?: string }) => {
-    profileForm.clearErrors("root");
-    updateProfile.mutate(values as any, {
-      onSuccess: () => {
-        setIsEditingProfile(false);
-      }
-    });
-  };
-
-  // ── Avatar handler ─────────────────────────────────────────────────────────
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      await updateAvatar.mutateAsync(file);
-    } catch {
-      // avatar upload error — Cloudinary not set up yet
-    }
-    e.target.value = '';
-  };
-
-  // ── Password handler ───────────────────────────────────────────────────────
-  const handleChangePassword = (values: ChangePasswordInput) => {
-    passwordForm.clearErrors("root");
-    changePassword.mutate(values, {
-      onSuccess: () => {
-        passwordForm.reset();
-      }
-    });
-  };
-
-  // ── Loading ────────────────────────────────────────────────────────────────
-  if (isLoading) {
+// Status badge for email verification
+const VerificationBadge = ({ verified }: { verified: boolean }) => {
+  if (verified) {
     return (
-      <div className="mx-auto max-w-2xl space-y-8 p-6">
-        <Skeleton className="h-8 w-32" />
-        <div className="flex items-center gap-6">
-          <Skeleton className="h-24 w-24 rounded-full shrink-0" />
-          <div className="space-y-2 flex-1">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-56" />
-            <Skeleton className="h-4 w-32" />
+      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
+        <CheckCircle className="h-3 w-3 mr-1" />
+        Verified
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800">
+      <AlertCircle className="h-3 w-3 mr-1" />
+      Unverified
+    </Badge>
+  );
+};
+
+// Status badge for 2FA
+const TwoFABadge = ({ enabled }: { enabled: boolean }) => {
+  if (enabled) {
+    return (
+      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
+        <Shield className="h-3 w-3 mr-1" />
+        2FA Enabled
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="bg-muted text-muted-foreground">
+      <Shield className="h-3 w-3 mr-1" />
+      2FA Disabled
+    </Badge>
+  );
+};
+
+// Role badge with color coding
+const RoleBadge = ({ role }: { role: string }) => {
+  const colors: Record<string, string> = {
+    client: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800',
+    freelancer: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:border-purple-800',
+    admin: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800',
+  };
+  return (
+    <Badge variant="outline" className={colors[role] || colors.client}>
+      {role.charAt(0).toUpperCase() + role.slice(1)}
+    </Badge>
+  );
+};
+
+// Password input with toggle
+const PasswordInput = ({
+  field,
+  placeholder,
+  disabled,
+}: {
+  field: any;
+  placeholder: string;
+  disabled?: boolean;
+}) => {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        type={show ? 'text' : 'password'}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="pr-10"
+        {...field}
+      />
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        tabIndex={-1}
+        aria-label={show ? 'Hide password' : 'Show password'}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+};
+
+// Section wrapper with animation
+const SectionWrapper = ({
+  title,
+  description,
+  icon: Icon,
+  children,
+  className,
+}: {
+  title: string;
+  description?: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.3 }}
+    className={className}
+  >
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-lg">{title}</CardTitle>
+            {description && <CardDescription>{description}</CardDescription>}
           </div>
         </div>
-        <Skeleton className="h-52 w-full rounded-xl" />
-        <Skeleton className="h-72 w-full rounded-xl" />
+      </CardHeader>
+      <Separator />
+      <CardContent className="pt-6">{children}</CardContent>
+    </Card>
+  </motion.div>
+);
+
+// ==================== MAIN PROFILE PAGE ====================
+
+export default function ProfilePage() {
+  // ── Zustand selectors (individual to prevent re-renders) ──
+  const user = useAuthStore((s) => s.user);
+  const isLoading = useAuthStore((s) => s.isLoading);
+
+  // ── 2FA state ──
+  const [showQrSetup, setShowQrSetup] = useState(false);
+  const [qrData, setQrData] = useState<{ qrCodeDataUrl: string; secret: string } | null>(null);
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
+
+  // ── Profile form ──
+  const profileForm = useForm<UpdateProfileInput>({
+    resolver: zodResolver(updateProfileSchema),
+    defaultValues: {
+      name: user?.name || '',
+      phone: user?.phone || '',
+      location: '',
+      bio: '',
+      avatar: user?.avatar || '',
+    },
+  });
+
+  // Reset profile form when user data loads/changes
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        name: user.name || '',
+        phone: user.phone || '',
+        location: (user as any).location || '',
+        bio: (user as any).bio || '',
+        avatar: user.avatar || '',
+      });
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateProfile = useUpdateProfile({
+    setError: profileForm.setError,
+  });
+
+  // Reset form after successful update
+  useEffect(() => {
+    if (updateProfile.isSuccess && updateProfile.data?.data?.data?.user) {
+      const updatedUser = updateProfile.data.data.data.user;
+      profileForm.reset({
+        name: updatedUser.name || '',
+        phone: updatedUser.phone || '',
+        location: (updatedUser as any).location || '',
+        bio: (updatedUser as any).bio || '',
+        avatar: updatedUser.avatar || '',
+      });
+    }
+  }, [updateProfile.isSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onProfileSubmit = (data: UpdateProfileInput) => {
+    // Remove empty strings so they aren't sent
+    const cleaned = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== '')
+    ) as UpdateProfileInput;
+    updateProfile.mutate(cleaned);
+  };
+
+  // ── Change password form ──
+  const passwordForm = useForm<ChangePasswordInput>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: {
+      currentPassword: '',
+      newPassword: '',
+      confirmNewPassword: '',
+    },
+  });
+
+  const changePassword = useChangePassword({
+    setError: passwordForm.setError,
+  });
+
+  const onPasswordSubmit = (data: ChangePasswordInput) => {
+    changePassword.mutate(data);
+  };
+
+  // ── 2FA: Init setup ──
+  const init2FA = useInitSetup2FA();
+
+  const handleEnable2FA = () => {
+    init2FA.mutate(undefined, {
+      onSuccess: (res) => {
+        const data = res.data?.data;
+        if (data) {
+          setQrData({ qrCodeDataUrl: data.qrCodeDataUrl, secret: data.secret });
+          setShowQrSetup(true);
+          setIsSetupComplete(false);
+        }
+      },
+    });
+  };
+
+  // ── 2FA: Verify setup ──
+  const verify2FAForm = useForm<TwoFACodeInput>({
+    resolver: zodResolver(twoFACodeSchema),
+    defaultValues: { code: '' },
+  });
+
+  const verify2FA = useVerifySetup2FA({
+    setError: verify2FAForm.setError,
+    onSuccess: () => {
+      setShowQrSetup(false);
+      setQrData(null);
+      setIsSetupComplete(true);
+      verify2FAForm.reset();
+    },
+  });
+
+  const onVerify2FA = (data: TwoFACodeInput) => {
+    verify2FA.mutate(data);
+  };
+
+  // ── 2FA: Disable ──
+  const disable2FAForm = useForm<TwoFACodeInput>({
+    resolver: zodResolver(twoFACodeSchema),
+    defaultValues: { code: '' },
+  });
+
+  const disable2FA = useDisable2FA({
+    setError: disable2FAForm.setError,
+  });
+
+  const onDisable2FA = (data: TwoFACodeInput) => {
+    disable2FA.mutate(data);
+  };
+
+  // ── Copy secret to clipboard ──
+  const copySecret = () => {
+    if (qrData?.secret) {
+      navigator.clipboard.writeText(qrData.secret);
+      toast.success('Secret copied to clipboard');
+    }
+  };
+
+  // ── Loading state ──
+  if (isLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
       </div>
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Get initials for avatar fallback ──
+  const initials = user.name
+    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : user.email?.[0]?.toUpperCase() || 'U';
+
   return (
-    <div className="relative mx-auto max-w-2xl space-y-8">
-      <div className="pointer-events-none absolute -left-14 -top-10 h-52 w-52 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-14 top-20 h-48 w-48 rounded-full bg-accent/10 blur-3xl" />
-
-      {/* ── Page Title ────────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your account settings
-        </p>
-      </div>
-
-      {/* ── Hero Section: Avatar + Identity ───────────────────────────────── */}
-      <div className="flex items-center gap-6 rounded-xl border border-border/70 bg-card/90 p-6 shadow-sm">
-
-        {/* Avatar with upload overlay */}
-        <div className="relative group shrink-0">
-          <Avatar className="h-24 w-24 ring-4 ring-background shadow-md">
-            <AvatarImage src={profile?.avatar?.url} />
-            <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary">
-              {profile?.username?.slice(0, 2).toUpperCase() ?? '??'}
+    <div className="container max-w-4xl mx-auto py-8 px-4 space-y-8">
+      {/* ─── SECTION 1: Profile Overview Header ─── */}
+      <SectionWrapper title="Profile Overview" icon={User}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          {/* Avatar */}
+          <Avatar className="h-20 w-20 ring-2 ring-border">
+            <AvatarImage src={user.avatar} alt={user.name} />
+            <AvatarFallback className="text-xl font-semibold bg-primary/10 text-primary">
+              {initials}
             </AvatarFallback>
           </Avatar>
 
-          {/* Upload overlay */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={updateAvatar.isPending}
-            aria-label="Upload avatar"
-            className="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            {updateAvatar.isPending ? (
-              <Loader2 className="h-5 w-5 text-white animate-spin" />
-            ) : (
-              <>
-                <Camera className="h-5 w-5 text-white" />
-                <span className="text-white text-xs mt-1 font-medium">
-                  Upload
-                </span>
-              </>
-            )}
-          </button>
-
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
-            onChange={handleAvatarChange}
-            aria-label="Avatar file input"
-          />
-        </div>
-
-        {/* Identity info */}
-        <div className="space-y-2 min-w-0">
-          <h2 className="text-xl font-bold truncate">
-            {profile?.fullName || profile?.username}
-          </h2>
-          <p className="text-sm text-muted-foreground truncate">
-            {profile?.email}
-          </p>
-          {memberSince && (
-            <p className="text-xs text-muted-foreground">
-              Member since {memberSince}
-            </p>
-          )}
-
-          {/* Email verified badge */}
-          {profile?.isEmailVerified ? (
-            <Badge
-              variant="outline"
-              className="gap-1 border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-700 dark:text-emerald-300"
-            >
-              <CheckCircle2 className="h-3 w-3" />
-              Email Verified
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="border-amber-500/30 bg-amber-500/10 text-xs text-amber-700 dark:text-amber-300"
-            >
-              Email Not Verified
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* ── Profile Information ────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-xl border border-border/70 bg-card/90 shadow-sm">
-
-        {/* Section header */}
-        <div className="flex items-center justify-between border-b border-border/70 bg-muted/30 px-5 py-4">
-          <div>
-            <h2 className="text-sm font-semibold">Profile Information</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Update your personal details
-            </p>
-          </div>
-
-          {/* Edit / Cancel toggle */}
-          {!isEditingProfile ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleStartEdit}
-              className="h-8"
-            >
-              <Pencil className="mr-1.5 h-3.5 w-3.5" />
-              Edit
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCancelEdit}
-              className="h-8"
-            >
-              <X className="mr-1.5 h-3.5 w-3.5" />
-              Cancel
-            </Button>
-          )}
-        </div>
-
-        {/* Form fields */}
-        <form onSubmit={profileForm.handleSubmit(handleSaveProfile)} className="p-5 space-y-4">
-
-          {/* Profile error */}
-          {profileForm.formState.errors.root && (
-            <Alert variant="destructive">
-              <AlertDescription>{profileForm.formState.errors.root.message}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Full Name */}
-          <div className="space-y-1.5">
-            <Label htmlFor="fullName" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Full Name
-            </Label>
-            {isEditingProfile ? (
-              <Input
-                id="fullName"
-                {...profileForm.register("name")}
-                placeholder="John Doe"
-                autoFocus
-                disabled={updateProfile.isPending}
-              />
-            ) : (
-              <p className="text-sm font-medium py-2 px-3 bg-muted/30 rounded-md">
-                {profile?.fullName || '—'}
-              </p>
-            )}
-          </div>
-
-          {/* Username */}
-          <div className="space-y-1.5">
-            <Label htmlFor="username" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Username
-            </Label>
-            {isEditingProfile ? (
-              <Input
-                id="username"
-                {...profileForm.register("username")}
-                placeholder="johndoe"
-                disabled={updateProfile.isPending}
-              />
-            ) : (
-              <p className="text-sm font-medium py-2 px-3 bg-muted/30 rounded-md">
-                @{profile?.username || '—'}
-              </p>
-            )}
-          </div>
-
-          {/* Email — always read-only */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Email
-            </Label>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium py-2 px-3 bg-muted/30 rounded-md flex-1 text-muted-foreground">
-                {profile?.email}
-              </p>
-              <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+          {/* User info */}
+          <div className="flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold text-foreground">{user.name}</h1>
+              <RoleBadge role={user.role} />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Email cannot be changed
-            </p>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Mail className="h-4 w-4" />
+                {user.email}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <VerificationBadge verified={user.isEmailVerified} />
+              <TwoFABadge enabled={user.isTwoFactorEnabled} />
+            </div>
           </div>
+        </div>
+      </SectionWrapper>
 
-          {/* Save button — only in edit mode */}
-          {isEditingProfile && (
-            <div className="flex justify-end pt-2">
+      {/* ─── SECTION 2: Edit Profile Form ─── */}
+      <SectionWrapper
+        title="Edit Profile"
+        description="Update your personal information"
+        icon={User}
+      >
+        <Form {...profileForm}>
+          <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-5">
+            {/* Name */}
+            <FormField
+              control={profileForm.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <User className="h-4 w-4" /> Name
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your full name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Phone */}
+            <FormField
+              control={profileForm.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <Phone className="h-4 w-4" /> Phone
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="+15551234567" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Location */}
+            <FormField
+              control={profileForm.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" /> Location
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="New York, USA" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Bio */}
+            <FormField
+              control={profileForm.control}
+              name="bio"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <FileText className="h-4 w-4" /> Bio
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Tell us about yourself..."
+                      rows={3}
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Avatar URL */}
+            <FormField
+              control={profileForm.control}
+              name="avatar"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <Camera className="h-4 w-4" /> Avatar URL
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://example.com/avatar.jpg" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button type="submit" disabled={updateProfile.isPending} className="w-full sm:w-auto">
+              {updateProfile.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </form>
+        </Form>
+      </SectionWrapper>
+
+      {/* ─── SECTION 3: Change Password ─── */}
+      <SectionWrapper
+        title="Change Password"
+        description="After changing your password, you'll need to log in again"
+        icon={Key}
+      >
+        <Form {...passwordForm}>
+          <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-5">
+            {/* Current Password */}
+            <FormField
+              control={passwordForm.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <Lock className="h-4 w-4" /> Current Password
+                  </FormLabel>
+                  <FormControl>
+                    <PasswordInput field={field} placeholder="Enter current password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* New Password */}
+            <FormField
+              control={passwordForm.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <Lock className="h-4 w-4" /> New Password
+                  </FormLabel>
+                  <FormControl>
+                    <PasswordInput field={field} placeholder="Enter new password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Confirm New Password */}
+            <FormField
+              control={passwordForm.control}
+              name="confirmNewPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <Lock className="h-4 w-4" /> Confirm New Password
+                  </FormLabel>
+                  <FormControl>
+                    <PasswordInput field={field} placeholder="Confirm new password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button type="submit" disabled={changePassword.isPending} variant="outline" className="w-full sm:w-auto">
+              {changePassword.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Changing...
+                </>
+              ) : (
+                'Change Password'
+              )}
+            </Button>
+          </form>
+        </Form>
+      </SectionWrapper>
+
+      {/* ─── SECTION 4: Two-Factor Authentication ─── */}
+      <SectionWrapper
+        title="Two-Factor Authentication"
+        description="Add an extra layer of security to your account"
+        icon={Smartphone}
+      >
+        <AnimatePresence mode="wait">
+          {user.isTwoFactorEnabled ? (
+            // ── 2FA ENABLED: Show disable option ──
+            <motion.div
+              key="2fa-enabled"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
+                <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="font-medium text-green-800 dark:text-green-200">2FA is enabled</p>
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    Your account is protected with two-factor authentication
+                  </p>
+                </div>
+              </div>
+
+              <Form {...disable2FAForm}>
+                <form onSubmit={disable2FAForm.handleSubmit(onDisable2FA)} className="space-y-4">
+                  <FormField
+                    control={disable2FAForm.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Enter 6-digit code to disable</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="000000"
+                            maxLength={6}
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            className="text-center text-lg tracking-widest"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    variant="destructive"
+                    disabled={disable2FA.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    {disable2FA.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Disabling...
+                      </>
+                    ) : (
+                      'Disable 2FA'
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </motion.div>
+          ) : showQrSetup ? (
+            // ── 2FA SETUP: Show QR code ──
+            <motion.div
+              key="2fa-setup"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="space-y-6"
+            >
+              {/* QR Code */}
+              {qrData?.qrCodeDataUrl && (
+                <div className="flex flex-col items-center gap-4 p-6 border rounded-lg bg-card">
+                  <QrCode className="h-8 w-8 text-primary" />
+                  <img
+                    src={qrData.qrCodeDataUrl}
+                    alt="2FA QR Code"
+                    className="w-48 h-48 rounded-lg border"
+                  />
+                  <p className="text-sm text-muted-foreground text-center">
+                    Scan this QR code with your authenticator app
+                  </p>
+                </div>
+              )}
+
+              {/* Manual secret */}
+              {qrData?.secret && (
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
+                  <Key className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                  <code className="flex-1 text-sm break-all select-all">{qrData.secret}</code>
+                  <Button variant="ghost" size="sm" onClick={copySecret} type="button">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Verify code */}
+              <Form {...verify2FAForm}>
+                <form onSubmit={verify2FAForm.handleSubmit(onVerify2FA)} className="space-y-4">
+                  <FormField
+                    control={verify2FAForm.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Enter 6-digit verification code</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="000000"
+                            maxLength={6}
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            className="text-center text-lg tracking-widest"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex gap-3">
+                    <Button
+                      type="submit"
+                      disabled={verify2FA.isPending}
+                      className="flex-1 sm:flex-none"
+                    >
+                      {verify2FA.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        'Verify & Enable'
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowQrSetup(false);
+                        setQrData(null);
+                        verify2FAForm.reset();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </motion.div>
+          ) : (
+            // ── 2FA DISABLED: Show enable button ──
+            <motion.div
+              key="2fa-disabled"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-muted border mb-4">
+                <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">2FA is not enabled</p>
+                  <p className="text-sm text-muted-foreground">
+                    Protect your account by enabling two-factor authentication
+                  </p>
+                </div>
+              </div>
               <Button
-                type="submit"
-                disabled={updateProfile.isPending}
-                size="sm"
+                onClick={handleEnable2FA}
+                disabled={init2FA.isPending}
+                className="w-full sm:w-auto"
               >
-                {updateProfile.isPending ? (
+                {init2FA.isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                    Saving...
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating QR code...
                   </>
                 ) : (
                   <>
-                    <Check className="mr-1.5 h-3.5 w-3.5" />
-                    Save Changes
+                    <Shield className="h-4 w-4 mr-2" />
+                    Enable 2FA
                   </>
                 )}
               </Button>
-            </div>
+            </motion.div>
           )}
-        </form>
-      </section>
-
-      {/* ── Change Password ────────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-xl border border-border/70 bg-card/90 shadow-sm">
-
-        {/* Section header */}
-        <div className="border-b border-border/70 bg-muted/30 px-5 py-4">
-          <h2 className="text-sm font-semibold">Change Password</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Use a strong password to keep your account secure
-          </p>
-        </div>
-
-        <form onSubmit={passwordForm.handleSubmit(handleChangePassword)} className="p-5 space-y-4">
-
-          {/* Success */}
-          {changePassword.isSuccess && (
-            <Alert className="border-emerald-500/30 bg-emerald-500/10">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
-              <AlertDescription className="text-emerald-700 dark:text-emerald-300">
-                Password changed successfully.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Error */}
-          {passwordForm.formState.errors.root && (
-            <Alert variant="destructive">
-              <AlertDescription>{passwordForm.formState.errors.root.message}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Current Password */}
-          <div className="space-y-1.5">
-            <Label htmlFor="oldPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Current Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="oldPassword"
-                type={showOld ? 'text' : 'password'}
-                {...passwordForm.register("currentPassword")}
-                placeholder="Enter current password"
-                className="pr-10"
-                disabled={changePassword.isPending}
-              />
-              <button
-                type="button"
-                onClick={() => setShowOld((v) => !v)}
-                aria-label={showOld ? 'Hide password' : 'Show password'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showOld
-                  ? <EyeOff className="h-4 w-4" />
-                  : <Eye className="h-4 w-4" />
-                }
-              </button>
-            </div>
-          </div>
-
-          {/* New Password */}
-          <div className="space-y-1.5">
-            <Label htmlFor="newPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              New Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="newPassword"
-                type={showNew ? 'text' : 'password'}
-                {...passwordForm.register("newPassword")}
-                placeholder="Enter new password"
-                className="pr-10"
-                disabled={changePassword.isPending}
-              />
-              <button
-                type="button"
-                onClick={() => setShowNew((v) => !v)}
-                aria-label={showNew ? 'Hide password' : 'Show password'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showNew
-                  ? <EyeOff className="h-4 w-4" />
-                  : <Eye className="h-4 w-4" />
-                }
-              </button>
-            </div>
-
-            {/* Strength indicator */}
-            {newPassword && strength && (
-              <div className="space-y-1.5 pt-1">
-                <div className="flex gap-1">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                        i < strength.score ? strength.color : 'bg-muted'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className={`text-xs font-medium ${strength.text}`}>
-                  {strength.label} password
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Confirm Password */}
-          <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Confirm New Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirm ? 'text' : 'password'}
-                {...passwordForm.register("confirmNewPassword")}
-                placeholder="Confirm new password"
-                className="pr-10"
-                disabled={changePassword.isPending}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirm((v) => !v)}
-                aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showConfirm
-                  ? <EyeOff className="h-4 w-4" />
-                  : <Eye className="h-4 w-4" />
-                }
-              </button>
-            </div>
-
-            {/* Match indicator */}
-            {confirmPassword && newPassword && (
-              <p className={`text-xs font-medium flex items-center gap-1 ${
-                passwordsMatch ? 'text-emerald-600 dark:text-emerald-300' : 'text-destructive'
-              }`}>
-                {passwordsMatch ? (
-                  <><CheckCircle2 className="h-3 w-3" /> Passwords match</>
-                ) : (
-                  <><X className="h-3 w-3" /> Passwords do not match</>
-                )}
-              </p>
-            )}
-          </div>
-
-          {/* Submit */}
-          <div className="flex justify-end pt-2">
-            <Button
-              type="submit"
-              disabled={
-                !passwordForm.watch("currentPassword") ||
-                !passwordForm.watch("newPassword") ||
-                !passwordForm.watch("confirmNewPassword") ||
-                !passwordsMatch ||
-                changePassword.isPending
-              }
-            >
-              {changePassword.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                'Update Password'
-              )}
-            </Button>
-          </div>
-
-        </form>
-      </section>
-
+        </AnimatePresence>
+      </SectionWrapper>
     </div>
   );
 }
