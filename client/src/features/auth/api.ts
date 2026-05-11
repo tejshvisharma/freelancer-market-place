@@ -79,7 +79,7 @@ export const useLogoutMutation = () => {
         mutationFn: logout,
         onSuccess: () => {
             clearUser();
-            clearCsrfToken();
+            
         },
     });
 };

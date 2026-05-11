@@ -11,6 +11,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageLoader } from '@/components/ui/PageLoader';
 import GoogleCallbackPage from '@/features/auth/pages/GoogleCallbackPage';
 import ProfilePage from '@/features/auth/pages/ProfilePage';
+import RoleRedirect from '@/components/common/RoleRedirect';
 
 // Lazy loaded Auth Pages
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
@@ -116,35 +117,60 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    path: "/dashboard",
+    element: <ProtectedRoute />, // only checks isAuthenticated here
+    children: [
+      {
+        index: true, 
+        element: <RoleRedirect />, 
+      },
+    ],
+  },
+
+  // ── Client routes ──────────────────────────────────────────────────────
+  {
+    element: <ProtectedRoute allowedRoles={["client"]} />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          { path: "/dashboard/client", element: <ClientDashboard /> },
+        ],
+      },
+    ],
+  },
+
+  // ── Freelancer routes ──────────────────────────────────────────────────
+  {
+    element: <ProtectedRoute allowedRoles={["freelancer"]} />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          { path: "/dashboard/freelancer", element: <FreelancerDashboard /> },
+        ],
+      },
+    ],
+  },
+
+  // ── Admin routes ───────────────────────────────────────────────────────
+  {
+    element: <ProtectedRoute allowedRoles={["admin"]} />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          { path: "/admin", element: <AdminDashboard /> },
+        ],
+      },
+    ],
+  },
+  {
     element: <ProtectedRoute />,
     children: [
       {
         element: <AppLayout />,
         children: [
-          {
-            path: ROUTES.DASHBOARD_CLIENT,
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <ClientDashboard />
-              </Suspense>
-            ),
-          },
-          {
-            path: ROUTES.DASHBOARD_FREELANCER,
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <FreelancerDashboard />
-              </Suspense>
-            ),
-          },
-          {
-            path: ROUTES.DASHBOARD_ADMIN,
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <AdminDashboard />
-              </Suspense>
-            ),
-          },
           {
             path: ROUTES.PROFILE_PAGE,
             element: (
@@ -165,4 +191,5 @@ export const router = createBrowserRouter([
       },
     ],
   },
+
 ]);

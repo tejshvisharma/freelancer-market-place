@@ -4,7 +4,7 @@ import {
   Menu, Sun, Moon, User, LogOut, Trophy,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
-import { useLogoutMutation } from '@/features/auth/api';
+import { useLogout } from '@/features/auth/hooks/Uselogout';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ const NAV_LINKS = [
     to: '/projects',
     label: 'Projects',
     icon: FolderKanban,
-    enabled: true,
+    enabled: false,
   },
   {
     to: '/dashboard',
@@ -42,13 +42,13 @@ const NAV_LINKS = [
     to: '/leaderboard',
     label: 'Leaderboard',
     icon: Trophy,
-    enabled: true,
+    enabled: false,
   },
 ];
 
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
-  const logoutMutation = useLogoutMutation();
+  const logOut = useLogout();
   const { isDark, toggleTheme } = useThemeStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -174,7 +174,7 @@ export function AppLayout() {
             </Button>
 
             <h2 className="text-sm md:text-lg font-semibold truncate">
-              Welcome back, {user?.username}
+              Welcome back, {user?.name}
             </h2>
           </div>
 
@@ -202,9 +202,9 @@ export function AppLayout() {
                   className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Avatar className="h-9 w-9 cursor-pointer border border-border/70 transition-all hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/50">
-                    <AvatarImage src={user?.avatar?.url} />
+                    <AvatarImage src={user?.avatar} />
                     <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
-                      {user?.username?.slice(0, 2).toUpperCase()}
+                      {user?.name?.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </button>
@@ -213,13 +213,13 @@ export function AppLayout() {
               <DropdownMenuContent align="end" className="w-56 border-border/70 bg-card/95 backdrop-blur-sm">
                 <div className="flex items-center gap-3 border-b border-border/70 px-3 py-3">
                   <Avatar className="h-9 w-9 shrink-0">
-                    <AvatarImage src={user?.avatar?.url} />
+                    <AvatarImage src={user?.avatar} />
                     <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
-                      {user?.username?.slice(0, 2).toUpperCase()}
+                      {user?.name?.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{user?.username}</p>
+                    <p className="text-sm font-semibold truncate">{user?.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                   </div>
                 </div>
@@ -234,12 +234,12 @@ export function AppLayout() {
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem
-                  onClick={() => logoutMutation.mutate()}
-                  disabled={logoutMutation.isPending}
+                  onClick={() => logOut.mutate()}
+                  disabled={logOut.isPending}
                   className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
                 >
                   <LogOut className="h-4 w-4 shrink-0" />
-                  <span>{logoutMutation.isPending ? 'Logging out...' : 'Logout'}</span>
+                  <span>{logOut.isPending ? 'Logging out...' : 'Logout'}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

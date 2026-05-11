@@ -27,6 +27,7 @@ export const useLogout = () => {
       // Always clear local state regardless of server response
       clearAuth();
       queryClient.clear(); // wipe all cached queries
+      toast.success("You have been signed out.");
       navigate(ROUTES.LOGIN, { replace: true });
     },
 
