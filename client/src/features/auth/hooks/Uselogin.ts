@@ -60,9 +60,7 @@ export const useLogin = ({ setError }: UseLoginOptions) => {
         queryClient.setQueryData(queryKeys.auth.me, res);
 
         toast.success(`Welcome back, ${payload.user.name}!`);
-        navigate(ROLE_REDIRECT[payload.user.role] ?? ROUTES.DASHBOARD_CLIENT, {
-          replace: true,
-        });
+        navigate("/dashboard", { replace: true });
       }
     },
 

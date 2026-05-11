@@ -40,9 +40,7 @@ export const useVerify2FA = ({ setError }: UseVerify2FAOptions) => {
       queryClient.setQueryData(queryKeys.auth.me, res);
 
       toast.success(`Welcome, ${payload.user.name}!`);
-      navigate(ROLE_REDIRECT[payload.user.role] ?? ROUTES.DASHBOARD_CLIENT, {
-        replace: true,
-      });
+      navigate("/dashboard", { replace: true });
     },
 
     onError: (error: unknown) => {
