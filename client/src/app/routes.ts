@@ -11,6 +11,7 @@ export const ROUTES = {
   RESEND_VERIFICATION: "/resend-verification",
   GOOGLE_CALLBACK: "/auth/google/callback",
   PROFILE_PAGE : "/profile",
+  SETTINGS: '/settings',
   // Dashboards
   DASHBOARD_CLIENT: "/dashboard/client",
   DASHBOARD_FREELANCER: "/dashboard/freelancer",

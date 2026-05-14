@@ -5,7 +5,7 @@ import { ROUTES } from './routes';
 // Eager load only what's needed before auth check
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { PublicRoute } from '@/components/layout/PublicRoute';
-import { AppLayout } from '@/components/layout/AppLayout';
+import  AppLayout  from '@/components/layout/AppLayout';
 
 // Simple spinner for Suspense fallback
 import { PageLoader } from '@/components/ui/PageLoader';
