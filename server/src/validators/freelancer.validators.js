@@ -50,7 +50,7 @@ export const updateSkillsValidation = [
     .withMessage("Skill name too long"),
   body("skills.*.proficiency")
     .optional()
-    .isIn(["Beginner", "Intermediate", "Expert"])
+    .isIn(["Beginner", "Intermediate", "Expert", "Advanced"])
     .withMessage("Invalid proficiency level"),
 ];
 

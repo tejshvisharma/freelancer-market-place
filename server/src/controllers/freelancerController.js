@@ -177,24 +177,24 @@ const updateSkills = asyncHandler(async (req, res) => {
 const addPortfolioItem = asyncHandler(async (req, res) => {
   const userId = req.user._id || req.user.id;
   const profile = await getProfileOrFail(userId);
-  
+
   if (!req.file) {
     throw new BadRequestError("Portfolio image is required");
   }
-  
+
   // With multer-storage-cloudinary, file is already uploaded to Cloudinary
   // req.file contains the Cloudinary response
   const { title, description, link } = req.body;
-  
+
   profile.portfolio.push({
     title,
     description,
     imageUrl: req.file.path, // Cloudinary secure_url
     link,
   });
-  
+
   await updateProfileScore(profile);
-  
+
   return createdResponse(res, "Portfolio item added", {
     portfolio: profile.portfolio,
   });
@@ -477,6 +477,10 @@ const updatePricing = asyncHandler(async (req, res) => {
   const userId = req.user._id || req.user.id;
   const profile = await getProfileOrFail(userId);
 
+  if (!profile.pricing) {
+    profile.pricing = { milestonePackages: [] };
+  }
+
   const { hourlyRate, milestonePackages } = req.body;
 
   if (hourlyRate !== undefined) {
@@ -504,16 +508,16 @@ const updatePricing = asyncHandler(async (req, res) => {
 const uploadResume = asyncHandler(async (req, res) => {
   const userId = req.user._id || req.user.id;
   const profile = await getProfileOrFail(userId);
-  
+
   if (!req.file) {
     throw new BadRequestError("Resume file is required");
   }
-  
+
   // With multer-storage-cloudinary, file is already uploaded to Cloudinary
   // req.file.path contains the Cloudinary secure_url
   profile.resumeUrl = req.file.path;
   await updateProfileScore(profile);
-  
+
   return successResponse(res, "Resume uploaded successfully", {
     resumeUrl: profile.resumeUrl,
   });
