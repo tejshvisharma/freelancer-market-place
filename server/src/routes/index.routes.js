@@ -9,7 +9,7 @@ import * as notificationRoutes from "./notificationRoutes.js";
 import * as paymentRoutes from "./paymentRoutes.js";
 import * as adminRoutes from "./adminRoutes.js";
 import * as systemRoutes from "./systemRoutes.js";
-
+import * as freelancerRoutes from "./freelancerRoutes.js";
 const router = Router();
 
 const resolveRouter = (moduleExports) => {
@@ -28,6 +28,7 @@ const apiBase = "/api/v1";
 
 const routeEntries = [
   [`${apiBase}/auth`, authRoutes],
+  [`${apiBase}/freelancer`, freelancerRoutes],
   [`${apiBase}/users`, userRoutes],
   [`${apiBase}/gigs`, gigRoutes],
   [`${apiBase}/proposals`, proposalRoutes],

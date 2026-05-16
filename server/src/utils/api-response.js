@@ -47,18 +47,31 @@ const paginatedResponse = (
   data = [],
   pagination = {},
 ) => {
+  const page = parseInt(pagination.page) || 1;
+  const limit = parseInt(pagination.limit) || 10;
+  const totalItems =
+    pagination.totalItems !== undefined
+      ? pagination.totalItems
+      : pagination.total || 0;
+  const totalPages =
+    pagination.totalPages !== undefined
+      ? pagination.totalPages
+      : Math.max(1, Math.ceil(totalItems / limit));
+  const hasNextPage =
+    pagination.hasNextPage !== undefined
+      ? pagination.hasNextPage
+      : page < totalPages;
+  const hasPrevPage =
+    pagination.hasPrevPage !== undefined ? pagination.hasPrevPage : page > 1;
+
   const meta = {
     pagination: {
-      page: parseInt(pagination.page) || 1,
-      limit: parseInt(pagination.limit) || 10,
-      total: pagination.total || 0,
-      pages: Math.ceil(
-        (pagination.total || 0) / (parseInt(pagination.limit) || 10),
-      ),
-      hasNext:
-        (parseInt(pagination.page) || 1) <
-        Math.ceil((pagination.total || 0) / (parseInt(pagination.limit) || 10)),
-      hasPrev: (parseInt(pagination.page) || 1) > 1,
+      page,
+      limit,
+      totalItems,
+      totalPages,
+      hasNextPage,
+      hasPrevPage,
     },
   };
 

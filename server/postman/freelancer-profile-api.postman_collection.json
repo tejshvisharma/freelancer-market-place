@@ -1,0 +1,1523 @@
+{
+  "info": {
+    "name": "Freelancer Profile API",
+    "description": "Complete API collection for Freelancer Professional Profile management. Base URL: /api/v1/freelancer",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "skillsphere-backend"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1/freelancer",
+      "type": "string"
+    },
+    {
+      "key": "authUrl",
+      "value": "http://localhost:8000/api/v1/auth",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profileId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "portfolioItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "experienceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "educationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "certificationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "freelancerEmail",
+      "value": "freelancer-test-{{$timestamp}}@example.com",
+      "type": "string"
+    },
+    {
+      "key": "freelancerPassword",
+      "value": "Password@123",
+      "type": "string"
+    },
+    {
+      "key": "clientEmail",
+      "value": "client-test-{{$timestamp}}@example.com",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Setup - Register & Login",
+      "description": "Setup scripts to create freelancer and client users, obtain access tokens",
+      "item": [
+        {
+          "name": "1.1 Register Freelancer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Register freelancer - Status 201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Save user data to variables', () => {",
+                  "    pm.expect(response.data.user).to.exist;",
+                  "    pm.collectionVariables.set('userId', response.data.user._id);",
+                  "    pm.collectionVariables.set('freelancerEmail', response.data.user.email);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate unique email for test isolation",
+                  "const timestamp = Date.now();",
+                  "pm.collectionVariables.set('freelancerEmail', `freelancer-${timestamp}@example.com`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Freelancer Tester\",\n    \"email\": \"{{freelancerEmail}}\",\n    \"password\": \"{{freelancerPassword}}\",\n    \"role\": \"freelancer\",\n    \"phone\": \"+15551234567\"\n}"
+            },
+            "url": {
+              "raw": "{{authUrl}}/register",
+              "host": ["{{authUrl}}"],
+              "path": ["register"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Login Freelancer (Get Access Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Login freelancer - Status 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Save access token', () => {",
+                  "    if (response.data.accessToken) {",
+                  "        pm.collectionVariables.set('accessToken', response.data.accessToken);",
+                  "    } else if (response.data.requires2FA) {",
+                  "        console.log('2FA required - login manually first');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{freelancerEmail}}\",\n    \"password\": \"{{freelancerPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{authUrl}}/login",
+              "host": ["{{authUrl}}"],
+              "path": ["login"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Register Client (For Role Testing)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Register client - Status 201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.collectionVariables.set('clientEmail', response.data.user.email);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const timestamp = Date.now();",
+                  "pm.collectionVariables.set('clientEmail', `client-${timestamp}@example.com`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Client Tester\",\n    \"email\": \"{{clientEmail}}\",\n    \"password\": \"Password@123\",\n    \"role\": \"client\",\n    \"phone\": \"+15559876543\"\n}"
+            },
+            "url": {
+              "raw": "{{authUrl}}/register",
+              "host": ["{{authUrl}}"],
+              "path": ["register"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Profile CRUD",
+      "description": "Core profile retrieval and update operations",
+      "item": [
+        {
+          "name": "2.1 Get Own Profile (Auto-Create)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile exists', () => pm.expect(response.data.profile).to.exist);",
+                  "pm.test('Has user data', () => pm.expect(response.data.profile.user).to.exist);",
+                  "pm.test('Has skills array', () => pm.expect(response.data.profile.skills).to.be.an('array'));",
+                  "",
+                  "// Save IDs for later use",
+                  "pm.collectionVariables.set('profileId', response.data.profile._id);",
+                  "pm.collectionVariables.set('userId', response.data.profile.user._id);",
+                  "",
+                  "console.log('Profile ID:', response.data.profile._id);",
+                  "console.log('Completion Score:', response.data.profile.profileCompletionScore);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Update Profile (Headline, Bio, Languages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Headline updated', () => pm.expect(response.data.profile.headline).to.eql('Senior Full Stack Developer | React & Node.js'));",
+                  "pm.test('Bio updated', () => pm.expect(response.data.profile.bio).to.include('10+ years'));",
+                  "pm.test('Languages updated', () => pm.expect(response.data.profile.languages).to.include('Spanish'));",
+                  "pm.test('Score increased', () => pm.expect(response.data.profile.profileCompletionScore).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"headline\": \"Senior Full Stack Developer | React & Node.js\",\n    \"bio\": \"10+ years experience building scalable web applications. Specialized in React ecosystem and Node.js microservices.\",\n    \"languages\": [\"English\", \"Spanish\", \"Hindi\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Update Profile - Validation Error (Headline Too Long)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const response = pm.response.json();",
+                  "pm.test('Has field error for headline', () => {",
+                  "    const headlineError = response.errors.find(e => e.field === 'headline');",
+                  "    pm.expect(headlineError).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"headline\": \"{{$randomLoremParagraphs}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Recalculate Profile Score",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const response = pm.response.json();",
+                  "pm.test('Score is number between 0-100', () => {",
+                  "    pm.expect(response.data.profileCompletionScore).to.be.a('number');",
+                  "    pm.expect(response.data.profileCompletionScore).to.be.within(0, 100);",
+                  "});",
+                  "console.log('Profile Score:', response.data.profileCompletionScore);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile/recalculate-score",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile", "recalculate-score"]
+            }
+          }
+        },
+        {
+          "name": "2.5 Get Profile - Unauthorized (No Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile"]
+            }
+          }
+        },
+        {
+          "name": "2.6 Get Profile - Client Role (Should 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Login as client first to get client token",
+                  "const loginRequest = {",
+                  "    url: pm.variables.replaceIn('{{authUrl}}/login'),",
+                  "    method: 'POST',",
+                  "    header: { 'Content-Type': 'application/json' },",
+                  "    body: {",
+                  "        mode: 'raw',",
+                  "        raw: JSON.stringify({",
+                  "            email: pm.collectionVariables.get('clientEmail'),",
+                  "            password: 'Password@123'",
+                  "        })",
+                  "    }",
+                  "};",
+                  "",
+                  "pm.sendRequest(loginRequest, (err, res) => {",
+                  "    if (!err && res.json().data?.accessToken) {",
+                  "        pm.request.headers.add({",
+                  "            key: 'Authorization',",
+                  "            value: `Bearer ${res.json().data.accessToken}`",
+                  "        });",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Skills",
+      "description": "Skills array management",
+      "item": [
+        {
+          "name": "3.1 Update Skills (Full Replace)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Skills array replaced', () => pm.expect(response.data.skills).to.have.length(5));",
+                  "pm.test('Contains React Expert', () => {",
+                  "    const react = response.data.skills.find(s => s.name === 'React');",
+                  "    pm.expect(react.proficiency).to.eql('Expert');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"skills\": [\n        { \"name\": \"React\", \"proficiency\": \"Expert\" },\n        { \"name\": \"Node.js\", \"proficiency\": \"Expert\" },\n        { \"name\": \"TypeScript\", \"proficiency\": \"Advanced\" },\n        { \"name\": \"MongoDB\", \"proficiency\": \"Advanced\" },\n        { \"name\": \"Docker\", \"proficiency\": \"Intermediate\" }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/skills",
+              "host": ["{{baseUrl}}"],
+              "path": ["skills"]
+            }
+          }
+        },
+        {
+          "name": "3.2 Update Skills - Empty Name (422 Error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "const response = pm.response.json();",
+                  "pm.test('Has skill name error', () => {",
+                  "    const nameError = response.errors.find(e => e.field.includes('name'));",
+                  "    pm.expect(nameError).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"skills\": [\n        { \"name\": \"\", \"proficiency\": \"Expert\" }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/skills",
+              "host": ["{{baseUrl}}"],
+              "path": ["skills"]
+            }
+          }
+        },
+        {
+          "name": "3.3 Update Skills - Invalid Proficiency (422 Error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"skills\": [\n        { \"name\": \"React\", \"proficiency\": \"SuperSaiyan\" }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/skills",
+              "host": ["{{baseUrl}}"],
+              "path": ["skills"]
+            }
+          }
+        },
+        {
+          "name": "3.4 Update Skills - Clear All (Empty Array)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Skills empty', () => pm.expect(response.data.skills).to.have.length(0));",
+                  "",
+                  "// Restore skills for subsequent tests",
+                  "const restoreRequest = {",
+                  "    url: pm.variables.replaceIn('{{baseUrl}}/skills'),",
+                  "    method: 'PUT',",
+                  "    header: {",
+                  "        'Content-Type': 'application/json',",
+                  "        'Authorization': `Bearer ${pm.collectionVariables.get('accessToken')}`",
+                  "    },",
+                  "    body: {",
+                  "        mode: 'raw',",
+                  "        raw: JSON.stringify({",
+                  "            skills: [",
+                  "                { name: 'React', proficiency: 'Expert' },",
+                  "                { name: 'Node.js', proficiency: 'Expert' }",
+                  "            ]",
+                  "        })",
+                  "    }",
+                  "};",
+                  "setTimeout(() => pm.sendRequest(restoreRequest, () => {}), 500);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"skills\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/skills",
+              "host": ["{{baseUrl}}"],
+              "path": ["skills"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Portfolio",
+      "description": "Portfolio image upload and management",
+      "item": [
+        {
+          "name": "4.1 Add Portfolio Item (With Image)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Portfolio has 1 item', () => pm.expect(response.data.portfolio).to.have.length(1));",
+                  "pm.test('Has image URL', () => pm.expect(response.data.portfolio[0].imageUrl).to.match(/^https:\\/\\//));",
+                  "",
+                  "// Save ID for delete test",
+                  "pm.collectionVariables.set('portfolioItemId', response.data.portfolio[0]._id);",
+                  "console.log('Portfolio ID:', response.data.portfolio[0]._id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AKwA="
+                },
+                { "key": "title", "value": "E-commerce Platform", "type": "text" },
+                { "key": "description", "value": "Full-stack e-commerce solution built with MERN stack", "type": "text" },
+                { "key": "link", "value": "https://example-project.com", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/portfolio",
+              "host": ["{{baseUrl}}"],
+              "path": ["portfolio"]
+            }
+          }
+        },
+        {
+          "name": "4.2 Add Portfolio Item - No Image (400 Error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error mentions image required', () => {",
+                  "    pm.expect(pm.response.json().message).to.match(/image/i);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "No Image Project", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/portfolio",
+              "host": ["{{baseUrl}}"],
+              "path": ["portfolio"]
+            }
+          }
+        },
+        {
+          "name": "4.3 Add Portfolio Item - No Title (422 Error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AKwA="
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/portfolio",
+              "host": ["{{baseUrl}}"],
+              "path": ["portfolio"]
+            }
+          }
+        },
+        {
+          "name": "4.4 Delete Portfolio Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Portfolio item removed', () => pm.expect(response.data.portfolio).to.have.length(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/portfolio/{{portfolioItemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["portfolio", "{{portfolioItemId}}"]
+            }
+          }
+        },
+        {
+          "name": "4.5 Delete Portfolio Item - Invalid ID (422 Error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/portfolio/invalid-id-format",
+              "host": ["{{baseUrl}}"],
+              "path": ["portfolio", "invalid-id-format"]
+            }
+          }
+        },
+        {
+          "name": "4.6 Delete Portfolio Item - Not Found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/portfolio/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": ["portfolio", "507f1f77bcf86cd799439011"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Work Experience",
+      "description": "Work experience CRUD operations",
+      "item": [
+        {
+          "name": "5.1 Add Work Experience",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Experience added', () => {",
+                  "    pm.expect(response.data.workExperience).to.have.length(1);",
+                  "    pm.expect(response.data.workExperience[0].title).to.eql('Senior Full Stack Developer');",
+                  "    pm.expect(response.data.workExperience[0].company).to.eql('TechCorp Inc.');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('experienceId', response.data.workExperience[0]._id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Senior Full Stack Developer\",\n    \"company\": \"TechCorp Inc.\",\n    \"location\": \"San Francisco, CA\",\n    \"from\": \"2020-03-15\",\n    \"to\": \"2024-01-31\",\n    \"current\": false,\n    \"description\": \"Led development of microservices architecture serving 1M+ users.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/experience",
+              "host": ["{{baseUrl}}"],
+              "path": ["experience"]
+            }
+          }
+        },
+        {
+          "name": "5.2 Add Current Position",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Current flag is true', () => pm.expect(response.data.workExperience[response.data.workExperience.length - 1].current).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Current Role\",\n    \"company\": \"Current Corp\",\n    \"location\": \"Remote\",\n    \"from\": \"2024-02-01\",\n    \"current\": true,\n    \"description\": \"Currently leading frontend architecture.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/experience",
+              "host": ["{{baseUrl}}"],
+              "path": ["experience"]
+            }
+          }
+        },
+        {
+          "name": "5.3 Add Experience - Empty Title (422 Error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"\",\n    \"company\": \"Tech Corp\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/experience",
+              "host": ["{{baseUrl}}"],
+              "path": ["experience"]
+            }
+          }
+        },
+        {
+          "name": "5.4 Update Work Experience",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Title updated', () => {",
+                  "    const exp = response.data.workExperience.find(e => e._id === pm.collectionVariables.get('experienceId'));",
+                  "    pm.expect(exp.title).to.eql('Lead Full Stack Developer');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Lead Full Stack Developer\",\n    \"description\": \"Promoted to lead role managing team of 8 developers.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/experience/{{experienceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["experience", "{{experienceId}}"]
+            }
+          }
+        },
+        {
+          "name": "5.5 Delete Work Experience",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Experience removed', () => {",
+                  "    const exp = response.data.workExperience.find(e => e._id === pm.collectionVariables.get('experienceId'));",
+                  "    pm.expect(exp).to.be.undefined;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/experience/{{experienceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["experience", "{{experienceId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Education",
+      "description": "Education CRUD operations",
+      "item": [
+        {
+          "name": "6.1 Add Education",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Education added', () => pm.expect(response.data.education[0].school).to.eql('MIT'));",
+                  "pm.collectionVariables.set('educationId', response.data.education[0]._id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"school\": \"MIT\",\n    \"degree\": \"B.S. Computer Science\",\n    \"fieldOfStudy\": \"Computer Science\",\n    \"from\": \"2014-09-01\",\n    \"to\": \"2018-06-15\",\n    \"current\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/education",
+              "host": ["{{baseUrl}}"],
+              "path": ["education"]
+            }
+          }
+        },
+        {
+          "name": "6.2 Update Education",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Degree updated', () => {",
+                  "    const edu = response.data.education.find(e => e._id === pm.collectionVariables.get('educationId'));",
+                  "    pm.expect(edu.degree).to.eql('M.S. Computer Science');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"degree\": \"M.S. Computer Science\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/education/{{educationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["education", "{{educationId}}"]
+            }
+          }
+        },
+        {
+          "name": "6.3 Delete Education",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/education/{{educationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["education", "{{educationId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Certifications",
+      "description": "Certification CRUD operations",
+      "item": [
+        {
+          "name": "7.1 Add Certification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Cert added', () => pm.expect(response.data.certifications[0].name).to.eql('AWS Solutions Architect'));",
+                  "pm.collectionVariables.set('certificationId', response.data.certifications[0]._id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"AWS Solutions Architect\",\n    \"issuer\": \"Amazon Web Services\",\n    \"issuedDate\": \"2023-06-15\",\n    \"url\": \"https://aws.amazon.com/verify/cert123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/certifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["certifications"]
+            }
+          }
+        },
+        {
+          "name": "7.2 Update Certification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Name updated', () => {",
+                  "    const cert = response.data.certifications.find(c => c._id === pm.collectionVariables.get('certificationId'));",
+                  "    pm.expect(cert.name).to.eql('AWS Solutions Architect Professional');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"AWS Solutions Architect Professional\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/certifications/{{certificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["certifications", "{{certificationId}}"]
+            }
+          }
+        },
+        {
+          "name": "7.3 Delete Certification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/certifications/{{certificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["certifications", "{{certificationId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Availability & Pricing",
+      "description": "Schedule and pricing configuration",
+      "item": [
+        {
+          "name": "8.1 Update Availability",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('5 days configured', () => pm.expect(response.data.availability).to.have.length(5));",
+                  "pm.test('Monday 9-5', () => {",
+                  "    const mon = response.data.availability.find(a => a.day === 'Mon');",
+                  "    pm.expect(mon.from).to.eql('09:00');",
+                  "    pm.expect(mon.to).to.eql('17:00');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"slots\": [\n        { \"day\": \"Mon\", \"from\": \"09:00\", \"to\": \"17:00\" },\n        { \"day\": \"Tue\", \"from\": \"09:00\", \"to\": \"17:00\" },\n        { \"day\": \"Wed\", \"from\": \"10:00\", \"to\": \"16:00\" },\n        { \"day\": \"Thu\", \"from\": \"09:00\", \"to\": \"17:00\" },\n        { \"day\": \"Fri\", \"from\": \"09:00\", \"to\": \"15:00\" }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["availability"]
+            }
+          }
+        },
+        {
+          "name": "8.2 Update Pricing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hourly rate set', () => pm.expect(response.data.pricing.hourlyRate).to.eql(85));",
+                  "pm.test('2 milestone packages', () => pm.expect(response.data.pricing.milestonePackages).to.have.length(2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"hourlyRate\": 85,\n    \"milestonePackages\": [\n        {\n            \"name\": \"Basic Website\",\n            \"price\": 2500,\n            \"deliverables\": [\"5 page design\", \"Responsive layout\", \"Contact form\"],\n            \"estimatedDays\": 14\n        },\n        {\n            \"name\": \"E-commerce Platform\",\n            \"price\": 8000,\n            \"deliverables\": [\"Custom design\", \"Payment integration\", \"Admin panel\"],\n            \"estimatedDays\": 45\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pricing",
+              "host": ["{{baseUrl}}"],
+              "path": ["pricing"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Resume Upload",
+      "description": "Resume file upload",
+      "item": [
+        {
+          "name": "9.1 Upload Resume",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has resume URL', () => pm.expect(response.data.resumeUrl).to.match(/^https:\\/\\//));",
+                  "console.log('Resume URL:', response.data.resumeUrl);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "resume",
+                  "type": "file",
+                  "src": "data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDQgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjE5MAolJUVPRg=="
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["resume"]
+            }
+          }
+        },
+        {
+          "name": "9.2 Upload Resume - No File (400 Error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{baseUrl}}/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["resume"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Public Endpoints",
+      "description": "Public profile viewing and search (no auth required)",
+      "item": [
+        {
+          "name": "10.1 Get Public Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile is public', () => pm.expect(response.data.profile.headline).to.exist);",
+                  "pm.test('User info included', () => pm.expect(response.data.profile.user.name).to.exist);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "10.2 Get Public Profile - Not Found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/507f1f77bcf86cd799439011",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "507f1f77bcf86cd799439011"]
+            }
+          }
+        },
+        {
+          "name": "10.3 List/Search Freelancers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => pm.expect(response.data).to.be.an('array'));",
+                  "pm.test('Has pagination meta', () => {",
+                  "    pm.expect(response.meta.pagination).to.exist;",
+                  "    pm.expect(response.meta.pagination.page).to.eql(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles?page=1&limit=12",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "12" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "10.4 Search by Skills",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles?skills=React,Node.js&minRating=4.0",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles"],
+              "query": [
+                { "key": "skills", "value": "React,Node.js" },
+                { "key": "minRating", "value": "4.0" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "10.5 Search by Languages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles?languages=English,Spanish",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles"],
+              "query": [
+                { "key": "languages", "value": "English,Spanish" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "10.6 Search by Headline",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles?search=React",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles"],
+              "query": [
+                { "key": "search", "value": "React" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "10.7 Invalid Limit (422 Error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles?limit=200",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles"],
+              "query": [
+                { "key": "limit", "value": "200" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

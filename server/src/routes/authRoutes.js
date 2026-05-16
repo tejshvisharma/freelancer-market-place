@@ -36,10 +36,19 @@ import {
 
 const router = express.Router();
 
+const isTestEnv = process.env.NODE_ENV === "test";
+const noopLimiter = (req, res, next) => next();
+
 // Rate limiters
-const loginLimiter = rateLimit(authRateLimiter.loginLimiter);
-const registerLimiter = rateLimit(authRateLimiter.registerLimiter);
-const emailLimiter = rateLimit(authRateLimiter.emailLimiter);
+const loginLimiter = isTestEnv
+  ? noopLimiter
+  : rateLimit(authRateLimiter.loginLimiter);
+const registerLimiter = isTestEnv
+  ? noopLimiter
+  : rateLimit(authRateLimiter.registerLimiter);
+const emailLimiter = isTestEnv
+  ? noopLimiter
+  : rateLimit(authRateLimiter.emailLimiter);
 
 // Public routes
 router.post(
