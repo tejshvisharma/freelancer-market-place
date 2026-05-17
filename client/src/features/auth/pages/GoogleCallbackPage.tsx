@@ -15,7 +15,7 @@ import { authApi } from "@/features/auth/api/Auth.api";
 import { queryClient } from "@/lib/queryClient";
 import { queryKeys } from "@/constants/queryKeys";
 import { ROUTES, ROLE_REDIRECT } from "@/app/routes";
-import toast from "react-hot-toast";
+import { toast } from "sonner"
 import { apiClient } from "@/lib/axios";
 import { AuthUser } from "../types/Auth.types";
 import { ApiResponse } from "@/lib/Api.types";

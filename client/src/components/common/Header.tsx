@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
-import { useTheme } from 'next-themes'
+import { useThemeStore } from '@/stores/theme.store'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ import { ROUTES } from '@/app/routes'
 export default function Header() {
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
-  const { setTheme, theme } = useTheme()
+  const { isDark, toggleTheme } = useThemeStore()
   const logout = useLogout()
 
   const handleLogout = () => {
@@ -52,7 +52,7 @@ export default function Header() {
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        onClick={toggleTheme}
       >
         <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
         <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />

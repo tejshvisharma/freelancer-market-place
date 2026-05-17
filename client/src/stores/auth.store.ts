@@ -3,7 +3,6 @@ import { create } from 'zustand';
 import { apiClient } from '@/lib/axios';
 
 import { AuthUser } from "../features/auth/types/Auth.types";
-import { authApi } from '@/features/auth/api';
 import { queryKeys } from '@/constants/queryKeys';
 import { queryClient } from '@/lib/queryClient';
 

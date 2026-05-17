@@ -97,7 +97,14 @@ export const addWorkExperienceValidation = [
     .isLength({ max: 150 })
     .withMessage("Location too long"),
   body("from").optional().isISO8601().withMessage("Invalid start date"),
-  body("to").optional().isISO8601().withMessage("Invalid end date"),
+  body("to")
+    .if(
+      (value, { req }) =>
+        !(req.body.current === true || req.body.current === "true"),
+    )
+    .optional()
+    .isISO8601()
+    .withMessage("Invalid end date"),
   body("current")
     .optional()
     .isBoolean()
@@ -115,7 +122,13 @@ export const updateWorkExperienceValidation = [
   body("company").optional().trim().isLength({ max: 150 }),
   body("location").optional().trim().isLength({ max: 150 }),
   body("from").optional().isISO8601(),
-  body("to").optional().isISO8601(),
+  body("to")
+    .if(
+      (value, { req }) =>
+        !(req.body.current === true || req.body.current === "true"),
+    )
+    .optional()
+    .isISO8601(),
   body("current").optional().isBoolean(),
   body("description").optional().trim().isLength({ max: 500 }),
 ];
@@ -143,7 +156,14 @@ export const addEducationValidation = [
     .isLength({ max: 150 })
     .withMessage("Field of study too long"),
   body("from").optional().isISO8601().withMessage("Invalid start date"),
-  body("to").optional().isISO8601().withMessage("Invalid end date"),
+  body("to")
+    .if(
+      (value, { req }) =>
+        !(req.body.current === true || req.body.current === "true"),
+    )
+    .optional({ checkFalsy: true })
+    .isISO8601()
+    .withMessage("Invalid end date"),
   body("current").optional().isBoolean(),
 ];
 
@@ -153,7 +173,13 @@ export const updateEducationValidation = [
   body("degree").optional().trim().isLength({ max: 150 }),
   body("fieldOfStudy").optional().trim().isLength({ max: 150 }),
   body("from").optional().isISO8601(),
-  body("to").optional().isISO8601(),
+  body("to")
+    .if(
+      (value, { req }) =>
+        !(req.body.current === true || req.body.current === "true"),
+    )
+    .optional({ checkFalsy: true })
+    .isISO8601(),
   body("current").optional().isBoolean(),
 ];
 

@@ -17,7 +17,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner"
 import { authApi } from "../api/Auth.api";
 import { ROUTES } from "../../../app/routes";
 

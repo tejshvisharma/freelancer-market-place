@@ -83,7 +83,8 @@ export default function TwoFactorEnablePage() {
   };
 
   const qrCodeUrl = initSetup2FA.data?.data?.data?.qrCodeDataUrl;
-  const manualSecret = initSetup2FA.data?.data?.data?.secret || initSetup2FA.data?.data?.data?.manualSecret || '----';
+  const manualSecret = (initSetup2FA.data?.data?.data as any)?.secret || (initSetup2FA.data?.data?.data as any)?.manualSecret || '----';
+
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(manualSecret);

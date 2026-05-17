@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/auth.store';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from "@/components/ui/sonner"
 
 interface AppProvidersProps {
   children: React.ReactNode;
@@ -24,7 +24,7 @@ export function AppProviders({ children }: AppProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <Toaster position="top-right" />
+      <Toaster position={ "top-center"}/>
     </QueryClientProvider>
   );
 }

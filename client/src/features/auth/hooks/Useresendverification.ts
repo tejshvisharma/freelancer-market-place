@@ -16,7 +16,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { UseFormSetError } from "react-hook-form";
-import toast from "react-hot-toast";
+import { toast } from "sonner"
 import { authApi } from "../api/Auth.api";
 import { getErrorMessage, getFieldErrors } from "@/lib/utils";
 import type { ResendVerificationInput } from "../schemas/auth.schema";

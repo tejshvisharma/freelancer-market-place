@@ -30,9 +30,7 @@ export const registerSchema = z.object({
   ),
   email: emailField,
   password: passwordField,
-  role: z.enum(["client", "freelancer"], {
-    required_error: "Select a role",
-  }),
+  role: z.enum(["client", "freelancer"]),
   phone: z
     .string()
     .regex(/^\+?[1-9]\d{7,14}$/, "Enter a valid phone number")
@@ -67,7 +65,7 @@ export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
     newPassword: passwordField,
-    
+    confirmNewPassword: z.string().min(1, "Please confirm your new password"),
   })
   .refine((d) => d.newPassword === d.confirmNewPassword, {
     message: "Passwords do not match",

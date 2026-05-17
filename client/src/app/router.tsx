@@ -1,5 +1,5 @@
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { ROUTES } from './routes';
 // Eager load only what's needed before auth check
@@ -28,6 +28,12 @@ const TwoFactorPage = lazy(() => import('@/features/auth/pages/TwoFactorPage'));
 const ClientDashboard = lazy(() => import('@/pages/dashboard/ClientDashboard'));
 const FreelancerDashboard = lazy(() => import('@/pages/dashboard/FreelancerDashboard'));
 const AdminDashboard = lazy(() => import('@/pages/dashboard/AdminDashboard'));
+
+const withSuspense = (node: ReactNode) => (
+  <Suspense fallback={<PageLoader />}>
+    {node}
+  </Suspense>
+);
 
 
 /**
@@ -134,7 +140,7 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: "/dashboard/client", element: <ClientDashboard /> },
+          { path: "/dashboard/client", element: withSuspense(<ClientDashboard />) },
         ],
       },
     ],
@@ -147,7 +153,7 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: "/dashboard/freelancer", element: <FreelancerDashboard /> },
+          { path: "/dashboard/freelancer", element: withSuspense(<FreelancerDashboard />) },
         ],
       },
     ],
@@ -160,7 +166,7 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: "/admin", element: <AdminDashboard /> },
+          { path: "/admin", element: withSuspense(<AdminDashboard />) },
         ],
       },
     ],
